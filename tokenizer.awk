@@ -4,7 +4,9 @@ BEGIN {
     Q = "\047";
     QQ = "\042";
     BS = "\134";
+    LF = "\n";
     CRLF = "\r\n";
+    SP = " ";
 
     VCHAR = "!" QQ \
         "#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[" \
@@ -29,6 +31,14 @@ BEGIN {
         "]^_`abcdefghijklmnopqrstuvwxyz{|}~" \
         obs_no_ws_ctl;
 
+    atext = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
+        "abcdefghijklmnopqrstuvwxyz" \
+        "0123456789" \
+        "!#$%&'*+-/=?^_`{|}~";
+
+    qtext = "!#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]" \
+        "^_`abcdefghijklmnopqrstuvwxyz{|}~";
+
     split("Mon Tue Wed Thu Fri Sat Sun", arr_week, " ");
     split("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec", arr_month, " ");
     split("\t| ", arr_wsp, "|");
@@ -37,6 +47,7 @@ BEGIN {
 
     field = "";
     buf = "";
+    obuf = "";
     error = 0;
 }
 
@@ -54,8 +65,15 @@ function quote(str) {
     return Q str Q;
 }
 
-function output(key, value) {
-    print quote(key), quote(value), BS;
+function stack(key, value) {
+    obuf = obuf quote(key) SP quote(value) SP BS LF;
+}
+
+function flush() {
+    if (buf) { stack("unstructured", buf); }
+    buf = "";
+    printf("%s", obuf);
+    obuf = "";
 }
 
 function next_token(chars, _) {
@@ -154,9 +172,12 @@ function _consume_obs_fws(_) {
 
 function consume_fws(_) {
     _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["fws"] = _consume_fws();
     if (!_["fws"]) {
         buf = _["buf"];
+        obuf = _["obuf"];
         _["fws"] = _consume_obs_fws();
     }
 
@@ -165,6 +186,8 @@ function consume_fws(_) {
 
 function _consume_quoted_pair(_) {
     _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["tmp"] = next_str(BS);
     if (_["tmp"]) {
         _["tmp2"] = next_arr(arr_vchar);
@@ -178,11 +201,14 @@ function _consume_quoted_pair(_) {
     }
 
     buf = _["buf"];
+    obuf = _["obuf"];
     return "";
 }
 
 function _consume_obs_qp(_) {
     _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["tmp"] = next_str(BS);
     if (_["tmp"]) {
         _["nul"] = next_str("\000");
@@ -199,12 +225,18 @@ function _consume_obs_qp(_) {
     }
 
     buf = _["buf"];
+    obuf = _["obuf"];
     return "";
 }
 
 function consume_quoted_pair(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["tmp"] = _consume_quoted_pair();
     if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
         _["tmp"] = _consume_obs_qp();
     }
 
@@ -212,6 +244,9 @@ function consume_quoted_pair(_) {
 }
 
 function consume_ccontent(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["tmp"] = next_token(ctext);
     if (_["tmp"]) { return _["tmp"]; }
 
@@ -221,14 +256,23 @@ function consume_ccontent(_) {
     _["tmp"] = consume_comment();
     if (_["tmp"]) { return _["tmp"]; }
 
+    buf = _["buf"];
+    obuf = _["obuf"];
     return "";
 }
 
 function consume_comment(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["tmp"] = "";
 
     _["op_brace"] = next_str("(");
-    if (!_["op_brace"]) { return ""; }
+    if (!_["op_brace"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
     _["tmp"] = _["tmp"] _["op_brace"];
 
     while (1) {
@@ -239,20 +283,25 @@ function consume_comment(_) {
     }
 
     _["cl_brace"] = next_str(")");
-    if (!_["cl_brace"]) { return ""; }
-    _["tmp"] = _["tmp"] _["cl_brace"];
+    if (!_["cl_brace"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
 
-    return _["tmp"];
+    return _["tmp"] _["cl_brace"];
 }
 
 function consume_cfws(_) {
-    _["buf"] = buf;
     _["tmp"] = "";
 
     while (1) {
         _["tmp"] = _["tmp"] consume_fws();
         _["comment"] = consume_comment();
-        if (!_["comment"]) {
+        if (_["comment"]) {
+            stack("comment", _["comment"]);
+        }
+        else {
             break;
         }
         _["tmp"] = _["tmp"] _["comment"];
@@ -261,31 +310,35 @@ function consume_cfws(_) {
     _["fws"] = consume_fws();
     _["tmp"] = _["tmp"] _["fws"];
 
-    if (_["tmp"]) {
-        output("cfws", _["tmp"]);
-    }
-
     return _["tmp"];
 }
 
 function consume_day_of_week(_) {
     _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["fws"] = consume_fws();
     _["day_name"] = next_arr(arr_week);
 
-    if (!_["day_name"]) {
+    if (_["day_name"]) {
+        stack("day-name", _["day_name"]);
+    }
+    else {
+        buf = _["buf"];
+        obuf = _["obuf"];
         diag_expect("([FWS] day-name)");
         return "";
     }
 
     _["tmp"] = _["fws"] _["day_name"];
-    output("day-name", _["tmp"]);
     return _["tmp"];
 
 }
 
 function _consume_day(_) {
     _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["fws1"] = consume_fws();
     _["d1"] = next_arr(arr_digit);
     _["d2"] = next_arr(arr_digit);
@@ -293,7 +346,11 @@ function _consume_day(_) {
 
     if (!_["d1"] || !_["fws2"]) {
         buf = _["buf"];
+        obuf = _["obuf"];
         return "";
+    }
+    else {
+        stack("day", _["d1"] _["d2"]);
     }
 
     return _["fws1"] _["d1"] _["d2"] _["fws2"];
@@ -301,13 +358,19 @@ function _consume_day(_) {
 
 function _consume_obs_day(_) {
     _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["cfws1"] = consume_cfws();
     _["d1"] = next_arr(arr_digit);
     _["d2"] = next_arr(arr_digit);
     _["cfws2"] = consume_cfws();
 
-    if (!_["d1"]) {
+    if (_["d1"]) {
+        stack("day", _["d1"] _["d2"]);
+    }
+    else {
         buf = _["buf"];
+        obuf = _["obuf"];
         return "";
     }
 
@@ -316,6 +379,8 @@ function _consume_obs_day(_) {
 
 function consume_day(_) {
     _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["day"] = _consume_day();
     if (!_["day"]) {
         buf = _["buf"];
@@ -323,11 +388,12 @@ function consume_day(_) {
     }
 
     if (!_["day"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
         diag_expect("([FWS] 1*2DIGIT FWS) / obs-day");
         return "";
     }
 
-    output("day", _["day"]);
     return _["day"];
 }
 
@@ -338,12 +404,14 @@ function consume_month(_) {
         return "";
     }
 
-    output("month", _["tmp"]);
+    stack("month", _["tmp"]);
     return _["tmp"];
 }
 
 function _consume_year(_) {
     _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["fws1"] = consume_fws();
     _["d1"] = next_arr(arr_digit);
     _["d2"] = next_arr(arr_digit);
@@ -354,14 +422,18 @@ function _consume_year(_) {
 
     if (!_["fws1"] || !_["d1"] || !_["d2"] || !_["d3"] || !_["d4"] || !_["fws2"]) {
         buf = _["buf"];
+        obuf = _["obuf"];
         return "";
     }
 
+    stack("year", _["d1"] _["d2"] _["d3"] _["d4"] _["tmp"]);
     return _["fws1"] _["d1"] _["d2"] _["d3"] _["d4"] _["tmp"] _["fws2"];
 }
 
 function _consume_obs_year(_) {
     _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["cfws1"] = consume_cfws();
     _["d1"] = next_arr(arr_digit);
     _["d2"] = next_arr(arr_digit);
@@ -370,14 +442,17 @@ function _consume_obs_year(_) {
 
     if (!_["d1"] || !_["d2"]) {
         buf = _["buf"];
+        obuf = _["obuf"];
         return "";
     }
 
+    stack("year", _["d1"] _["d2"] _["tmp"]);
     return _["fws1"] _["d1"] _["d2"] _["tmp"] _["fws2"];
 }
 
 function consume_year(_) {
     _["buf"] = buf;
+    _["obuf"] = obuf;
 
     _["year"] = _consume_year();
     if (!_["year"]) {
@@ -386,32 +461,40 @@ function consume_year(_) {
 
     if (!_["year"]) {
         buf = _["buf"];
+        obuf = _["obuf"];
         diag_expect("(FWS 4*DIGIT FWS)");
         return "";
     }
 
-    output("year", _["year"]);
     return _["year"];
 }
 
 function consume_date(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["day"] = consume_day();
-    if (!_["day"]) { return ""; }
-
     _["month"] = consume_month();
-    if (!_["month"]) { return ""; }
-
     _["year"] = consume_year();
-    if (!_["year"]) { return ""; }
+    if (!_["day"] || !_["month"] || !_["year"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
 
     return _["day"] _["month"] _["year"];
 }
 
 function _consume_hour(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["d1"] = next_arr(arr_digit);
     _["d2"] = next_arr(arr_digit);
 
     if (!_["d1"] || !_["d2"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
         return "";
     }
 
@@ -419,12 +502,17 @@ function _consume_hour(_) {
 }
 
 function _consume_obs_hour(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["cfws1"] = consume_cfws();
     _["d1"] = next_arr(arr_digit);
     _["d2"] = next_arr(arr_digit);
     _["cfws2"] = consume_cfws();
 
     if (!_["d1"] || !_["d2"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
         return "";
     }
 
@@ -433,9 +521,12 @@ function _consume_obs_hour(_) {
 
 function consume_hour(_) {
     _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["hour"] = _consume_hour();
     if (!_["hour"]) {
         buf = _["buf"];
+        obuf = _["obuf"];
         _["hour"] = _consume_obs_hour();
     }
 
@@ -444,15 +535,20 @@ function consume_hour(_) {
     }
 
     buf = _["buf"];
-    diag_expect("2DIGIT / obs-hour");
+    obuf = _["obuf"];
     return "";
 }
 
 function _consume_minute(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["d1"] = next_arr(arr_digit);
     _["d2"] = next_arr(arr_digit);
 
     if (!_["d1"] || !_["d2"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
         return "";
     }
 
@@ -460,12 +556,17 @@ function _consume_minute(_) {
 }
 
 function _consume_obs_minute(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["cfws1"] = consume_cfws();
     _["d1"] = next_arr(arr_digit);
     _["d2"] = next_arr(arr_digit);
     _["cfws2"] = consume_cfws();
 
     if (!_["d1"] || !_["d2"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
         return "";
     }
 
@@ -474,9 +575,12 @@ function _consume_obs_minute(_) {
 
 function consume_minute(_) {
     _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["minute"] = _consume_minute();
     if (!_["minute"]) {
         buf = _["buf"];
+        obuf = _["obuf"];
         _["minute"] = _consume_obs_minute();
     }
 
@@ -485,15 +589,21 @@ function consume_minute(_) {
     }
 
     buf = _["buf"];
+    obuf = _["obuf"];
     diag_expect("2DIGIT / obs-minute");
     return "";
 }
 
 function _consume_second(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["d1"] = next_arr(arr_digit);
     _["d2"] = next_arr(arr_digit);
 
     if (!_["d1"] || !_["d2"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
         return "";
     }
 
@@ -501,12 +611,17 @@ function _consume_second(_) {
 }
 
 function _consume_obs_second(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["cfws1"] = consume_cfws();
     _["d1"] = next_arr(arr_digit);
     _["d2"] = next_arr(arr_digit);
     _["cfws2"] = consume_cfws();
 
     if (!_["d1"] || !_["d2"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
         return "";
     }
 
@@ -515,9 +630,12 @@ function _consume_obs_second(_) {
 
 function consume_second(_) {
     _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["second"] = _consume_second();
     if (!_["second"]) {
         buf = _["buf"];
+        obuf = _["obuf"];
         _["second"] = _consume_obs_second();
     }
 
@@ -526,20 +644,29 @@ function consume_second(_) {
     }
 
     buf = _["buf"];
+    obuf = _["obuf"];
     diag_expect("2DIGIT / obs-second");
     return "";
 }
 
 function _consume_zone(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["tmp"] = consume_fws();
 
-    _["tmp2"] = next_str("+");
-    if (!_["tmp2"]) {
-        _["tmp2"] = next_str("-");
+    _["sign"] = next_str("+");
+    if (!_["sign"]) {
+        _["sign"] = next_str("-");
     }
 
-    if (!_["tmp2"]) { return ""; }
-    _["tmp"] = _["tmp"] _["tmp2"];
+    if (!_["sign"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    _["tmp"] = _["tmp"] _["sign"];
 
     _["d1"] = next_arr(arr_digit);
     _["d2"] = next_arr(arr_digit);
@@ -547,49 +674,72 @@ function _consume_zone(_) {
     _["d4"] = next_arr(arr_digit);
 
     if (!_["d1"] || !_["d2"] || !_["d3"] || !_["d4"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
         return "";
     }
 
+    stack("zone", _["sign"] _["d1"] _["d2"] _["d3"] _["d4"]);
     return _["tmp"] _["d1"] _["d2"] _["d3"] _["d4"];
 }
 
-function _consume_obs_zone() {
-    return next_arr(arr_obs_zone);
+function _consume_obs_zone(_) {
+    _["zone"] = next_arr(arr_obs_zone);
+    stack("zone", _["zone"]);
+    return _["zone"];
 }
 
 function consume_zone(_) {
     _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["tmp"] = _consume_zone();
     if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
         _["tmp"] = _consume_obs_zone();
     }
 
     if (!_["tmp"]) {
         buf = _["buf"];
+        obuf = _["obuf"];
         diag_expect("(FWS ( " QQ "+" QQ " / " QQ "-" QQ " ) 4DIGIT) / obs-zone");
         return "";
     }
 
-    output("zone", _["tmp"]);
     return _["tmp"];
 }
 
 function consume_time_of_day(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["tmp"] = "";
 
     _["hour"] = consume_hour();
-    if (!_["hour"]) { return ""; }
+    if (!_["hour"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        diag_expect("2DIGIT / obs-hour");
+        return "";
+    }
     _["tmp"] = _["tmp"] _["hour"];
 
     _["colon1"] = next_str(":");
     if (!_["colon1"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
         diag_expect("colon");
         return "";
     }
     _["tmp"] = _["tmp"] _["colon1"];
 
     _["minute"] = consume_minute();
-    if (!_["minute"]) { return ""; }
+    if (!_["minute"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
     _["tmp"] = _["tmp"] _["minute"];
 
     _["colon2"] = next_str(":");
@@ -597,6 +747,8 @@ function consume_time_of_day(_) {
         _["tmp"] = _["tmp"] _["colon2"];
         _["second"] = consume_second();
         if (!_["second"]) {
+            buf = _["buf"];
+            obuf = _["obuf"];
             return "";
         }
     }
@@ -605,50 +757,646 @@ function consume_time_of_day(_) {
 }
 
 function consume_time(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["tmp"] = "";
 
     _["tod"] = consume_time_of_day();
-    if (!_["tod"]) { return ""; }
+    if (!_["tod"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
     _["tmp"] = _["tmp"] _["tod"];
 
     _["zone"] = consume_zone();
-    if (!_["zone"]) { return ""; }
+    if (!_["zone"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
     _["tmp"] = _["tmp"] _["zone"];
 
     return _["tmp"];
 }
 
 function consume_date_time(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["dow"] = consume_day_of_week();
     _["comma"] = "";
     if (_["dow"]) {
         _["comma"] = next_str(",");
-        if (_["comma"]) {
-            output("comma", _["comma"]);
-        }
-        else {
+        if (!_["comma"]) {
+            buf = _["buf"];
+            obuf = _["obuf"];
             diag_expect("comma");
             return "";
         }
     }
 
     _["date"] = consume_date();
-    if (!_["date"]) { return ""; }
+    if (!_["date"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
 
     _["time"] = consume_time();
-    if (!_["time"]) { return ""; }
+    if (!_["time"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
 
     return _["dow"] _["comma"] _["date"] _["time"] consume_cfws();
 }
 
+function _consume_mailbox_list(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = "";
+
+    do {
+        _["mbox"] = consume_mailbox();
+        if (!_["mbox"]) {
+            buf = _["buf"];
+            obuf = _["obuf"];
+            return "";
+        }
+
+        _["tmp"] = _["tmp"] _["mbox"];
+        _["comma"] = next_str(",");
+    } while (_["comma"])
+
+    return _["tmp"];
+}
+
+function _consume_obs_mbox_list(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = "";
+
+    do {
+        _["tmp"] = _["tmp"] consume_cfws();
+        _["comma"] = next_str(",");
+        if (_["comma"]) {
+            _["tmp"] = _["tmp"] _["comma"];
+        }
+    } while (_["comma"])
+
+    _["mbox"] = consume_mailbox();
+    if (!_["mbox"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    _["tmp"] = _["tmp"] _["mbox"];
+
+    do {
+        _["comma"] = next_str(",");
+        if (_["comma"]) {
+            _["tmp"] = _["tmp"] _["comma"];
+        }
+        else {
+            break;
+        }
+
+        _["mbox"] = consume_mailbox();
+        if (_["mbox"]) {
+            _["tmp"] = _["tmp"] _["mbox"];
+        }
+        else {
+            _["tmp"] = _["tmp"] consume_cfws();
+        }
+    } while (_["comma"])
+
+    return _["tmp"];
+}
+
+function consume_mailbox_list(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = _consume_mailbox_list();
+    if (!_["tmp"]) {
+        _["tmp"] = _consume_obs_mbox_list();
+    }
+
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        diag_expect("(mailbox *(" QQ "," QQ " mailbox)) / obs-mbox-list");
+        return "";
+    }
+
+    return _["tmp"];
+}
+
+function consume_atom(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_cfws();
+
+    _["atom"] = next_token(atext);
+    if (!_["atom"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["tmp"] _["atom"] consume_cfws();
+}
+
+function consume_qcontent(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = next_token(qtext);
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        _["tmp"] = consume_quoted_pair();
+    }
+
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["tmp"];
+}
+
+function consume_quoted_string(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_cfws();
+
+    _["DQUOTE"] = next_str(QQ);
+    if (!_["DQUOTE"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+    _["tmp"] = _["tmp"] _["DQUOTE"];
+
+    do {
+        _["tmp"] = _["tmp"] consume_fws();
+
+        _["qcontent"] = consume_qcontent();
+        if (_["qcontent"]) {
+            _["tmp"] = _["tmp"] _["qcontent"];
+        }
+        else {
+            break;
+        }
+    } while (_["qcontent"])
+
+    _["tmp"] = _["tmp"] consume_fws();
+
+    _["DQUOTE"] = next_str(QQ);
+    if (!_["DQUOTE"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+    _["tmp"] = _["tmp"] _["DQUOTE"];
+
+    _["tmp"] = _["tmp"] consume_cfws();
+
+    return _["tmp"];
+}
+
+function consume_word(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_atom();
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+
+        _["tmp"] = consume_quoted_string();
+    }
+
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["tmp"];
+}
+
+function _consume_phrase(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = "";
+    do {
+        _["word"] = consume_word();
+        if (!_["word"]) { break; }
+        _["tmp"] = _["word"];
+    } while (1)
+
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["tmp"];
+}
+
+function _consume_obs_phrase(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_word();
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    while (1) {
+        _["rest"] = consume_word();
+        if (_["rest"]) {
+            _["tmp"] = _["tmp"] _["rest"];
+            continue;
+        }
+
+        _["rest"] = next_str(".");
+        if (_["rest"]) {
+            _["tmp"] = _["tmp"] _["rest"];
+            continue;
+        }
+
+        _["rest"] = consume_cfws();
+        if (_["rest"]) {
+            _["tmp"] = _["tmp"] _["rest"];
+            continue;
+        }
+
+        if (!_["rest"]) { break; }
+    }
+
+    return _["tmp"];
+}
+
+function consume_phrase(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = _consume_phrase();
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+
+        _["tmp"] = _consume_obs_phrase();
+    }
+
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["tmp"];
+}
+
+function consume_display_name(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_phrase();
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["tmp"];
+}
+
+function _consume_angle_addr(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    consume_cfws();
+    _["op_angle"] = next_str("<");
+    _["addr_spec"] = consume_addr_spec();
+    _["cl_angle"] = next_str(">");
+
+    if (!_["op_angle"] || !_["addr_spec"] || !_["cl_angle"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["addr_spec"];
+}
+
+function consume_obs_domain_list(_) {
+}
+
+function consume_obs_route(_) {
+    consume_obs_domain_list();
+    next_str(":");
+}
+
+function _consume_obs_angle_addr(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    consume_cfws();
+    _["op_angle"] = next_str("<");
+    _["obs_route"] = consume_obs_route();
+    _["addr_spec"] = consume_addr_spec();
+    _["cl_angle"] = next_str(">");
+
+    if (!_["op_angle"] || !_["obs_route"] || !_["addr_spec"] || !_["cl_angle"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["addr_spec"];
+}
+
+function consume_angle_addr(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = _consume_angle_addr();
+
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        _["tmp"] = _consume_obs_angle_addr();
+    }
+
+    if (_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        diag_expect("[CFWS] " QQ "<" QQ " addr-spec " QQ ">" QQ " [CFWS] / obs-angle-addr");
+        return "";
+    }
+
+    return _["tmp"];
+}
+
+function consume_name_addr(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_display_name();
+
+    _["angle_addr"] = consume_angle_addr();
+    if(!_["angle_addr"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["tmp"] _["angle_addr"];
+}
+
+function consume_dot_atom_text(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = next_token(atext);
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    while (1) {
+        _["dot"] = next_str(".");
+        if (!_["dot"]) { break; }
+        _["tmp"] = _["tmp"] _["dot"];
+
+        _["atext"] = next_token(atext);
+        if (!_["atext"]) {
+            buf = _["buf"];
+            obuf = _["obuf"];
+            return "";
+        }
+        _["tmp"] = _["tmp"] _["atext"];
+    }
+
+    return _["tmp"];
+}
+
+function consume_dot_atom(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_cfws();
+
+    _["dot_atom_text"] = consume_dot_atom_text();
+    if (!_["dot_atom_text"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+    _["tmp"] = _["tmp"] _["dot_atom_text"];
+
+    _["tmp"] = _["tmp"] consume_cfws();
+
+    return _["tmp"];
+}
+
+function consume_obs_local_part(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_word();
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    while (1) {
+        _["dot"] = next_str(".");
+        if (!_["dot"]) { break; }
+        _["tmp"] = _["tmp"] _["dot"];
+
+        _["word"] = consume_word();
+        if (!_["word"]) {
+            buf = _["buf"];
+            obuf = _["obuf"];
+            return "";
+        }
+        _["tmp"] = _["tmp"] _["word"];
+    }
+
+    return _["tmp"];
+}
+
+function consume_local_part(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_dot_atom();
+    if (_["tmp"]) {
+        return _["tmp"];
+    }
+
+    buf = _["buf"];
+    obuf = _["obuf"];
+
+    _["tmp"] = consume_quoted_string();
+    if (_["tmp"]) {
+        return _["tmp"];
+    }
+
+    buf = _["buf"];
+    obuf = _["obuf"];
+
+    _["tmp"] = consume_obs_local_part();
+    if (_["tmp"]) {
+        return _["tmp"];
+    }
+
+    buf = _["buf"];
+    obuf = _["obuf"];
+    return "";
+}
+
+function consume_domain_literal(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["cfws1"] = consume_cfws();
+    _["op_bracket"] = next_str("[");
+    # TODO:
+}
+
+function consume_obs_domain(_) {
+    # TODO:
+}
+
+function consume_domain(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_dot_atom();
+    if (_["tmp"]) {
+        return _["tmp"];
+    }
+
+    buf = _["buf"];
+    obuf = _["obuf"];
+
+    _["tmp"] = consume_domain_literal();
+    if (_["tmp"]) {
+        return _["tmp"];
+    }
+
+    buf = _["buf"];
+    obuf = _["obuf"];
+
+    _["tmp"] = consume_obs_domain();
+    if (_["tmp"]) {
+        return _["tmp"];
+    }
+
+    buf = _["buf"];
+    obuf = _["obuf"];
+    return "";
+}
+
+function consume_addr_spec(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["local_part"] = consume_local_part();
+    _["at"] = next_str("@");
+    _["domain"] = consume_domain();
+
+    if (!_["local_part"] || !_["at"] || !_["domain"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    stack("addr-spec", _["local_part"] _["at"] _["domain"]);
+    return _["local_part"] _["at"] _["domain"];
+}
+
+function consume_mailbox(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_name_addr();
+
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        _["tmp"] = consume_addr_spec();
+    }
+
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        diag_expect("name-addr / addr-spec");
+        return "";
+    }
+
+    return _["tmp"];
+}
+
+function consume_address_list() {
+}
+
+function consume_bcc() {
+}
+
+function consume_msg_id() {
+}
+
+function consume_references() {
+}
+
+function consume_path() {
+}
+
+function consume_received() {
+}
+
 function consume() {
     if (field == "Date") { consume_date_time(); }
+    else if (field == "From") { consume_mailbox_list(); }
+    else if (field == "Sender") { consume_mailbox(); }
+    else if (field == "Reply-To") { consume_address_list(); }
+    else if (field == "To") { consume_address_list(); }
+    else if (field == "Cc") { consume_address_list(); }
+    else if (field == "Bcc") { consume_bcc(); }
+    else if (field == "Message-ID") { consume_msg_id(); }
+    else if (field == "References") { consume_references(); }
     else if (field == "Recent-Date") { consume_date_time(); }
+    else if (field == "Recent-From") { consume_mailbox_list(); }
+    else if (field == "Recent-Sender") { consume_mailbox(); }
+    else if (field == "Recent-To") { consume_address_list(); }
+    else if (field == "Recent-Cc") { consume_address_list(); }
+    else if (field == "Recent-Bcc") { consume_bcc(); }
+    else if (field == "Recent-Message-ID") { consume_msg_id(); }
+    else if (field == "Return-Path") { consume_path(); }
+    else if (field == "Received") { consume_received(); }
 
-    if (buf) {
-        output("unstructured", buf);
-        buf = "";
-    }
+    flush();
 
     return 1;
 }
@@ -680,8 +1428,9 @@ function main(nr, str, _) {
 
         field = substr(str, 1, _["idx"] - 1);
         if (within(field, ftext)) {
+            stack("field-name", field);
+            flush();
             buf = substr(str, _["idx"] + 1, length(str));
-            output("field-name", field);
             return 1;
         }
     }
@@ -697,6 +1446,6 @@ function main(nr, str, _) {
 { main(NR, $0); }
 END {
     consume();
-    print " ";  # dismiss last backslash produced by `output()`
+    print " ";  # dismiss last backslash produced by `stack()`
     exit error;
 }
