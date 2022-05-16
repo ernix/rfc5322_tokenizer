@@ -163,7 +163,7 @@ function _consume_obs_fws(_) {
         _["crlf"] = next_str(CRLF);
         if (!_["crlf"]) { break; }
 
-        _["tmp"] = _["tmp"] _["crlf"]
+        _["tmp"] = _["tmp"] _["crlf"];
         _["wsp2"] = next_token_arr(arr_wsp);
         if (!_["wsp2"]) {
             buf = _["buf"];
@@ -2000,7 +2000,7 @@ function within(str, chars, _) {
 function main(nr, str, _) {
     if (str ~ /^[\t ]/ && field != "") {
         # concat folded lines
-        buf = buf CRLF str
+        buf = buf CRLF str;
         return 1;
     }
 
