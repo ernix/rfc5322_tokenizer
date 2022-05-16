@@ -1280,9 +1280,7 @@ function consume_dot_atom(_) {
     _["buf"] = buf;
     _["obuf"] = obuf;
 
-    _["tmp"] = "";
-
-    consume_cfws();
+    _["tmp"] = consume_cfws();
 
     _["dot_atom_text"] = consume_dot_atom_text();
     if (!_["dot_atom_text"]) {
@@ -1292,7 +1290,7 @@ function consume_dot_atom(_) {
     }
     _["tmp"] = _["tmp"] _["dot_atom_text"];
 
-    consume_cfws();
+    _["tmp"] = _["tmp"] consume_cfws();
 
     return _["tmp"];
 }
@@ -1904,12 +1902,6 @@ function consume_received_token(_) {
     _["buf"] = buf;
     _["obuf"] = obuf;
 
-    _["word"] = consume_word();
-    if (_["word"]) { return _["word"]; }
-
-    buf = _["buf"];
-    obuf = _["obuf"];
-
     _["angle_addr"] = consume_angle_addr();
     if (_["angle_addr"]) { return _["angle_addr"]; }
 
@@ -1927,6 +1919,14 @@ function consume_received_token(_) {
 
     buf = _["buf"];
     obuf = _["obuf"];
+
+    # XXX: `domain` starts with `word`
+    _["word"] = consume_word();
+    if (_["word"]) { return _["word"]; }
+
+    buf = _["buf"];
+    obuf = _["obuf"];
+
     return "";
 }
 
