@@ -1715,7 +1715,24 @@ function consume_address_list(_) {
 }
 
 function consume_bcc() {
-    # TODO:
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_address_list();
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+
+        _["tmp"] = consume_cwfs();
+    }
+
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["tmp"];
 }
 
 function consume_msg_id() {
