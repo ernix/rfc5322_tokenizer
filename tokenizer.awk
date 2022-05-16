@@ -2046,7 +2046,7 @@ function main(nr, str, _) {
 }
 
 /\r$/ { $0 = substr($0, 1, length($0) - 1); }  # remove trailing CR
-NR == 1 && $/^From / { next; }  # skip MBOX first env-from line
+NR == 1 && /^From / { next; }  # skip MBOX first env-from line
 /^$/ { exit; }  # end of header
 { main(NR, $0); }
 END {
