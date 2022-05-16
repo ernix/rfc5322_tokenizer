@@ -4,8 +4,8 @@ BEGIN {
     Q = "\047";
     QQ = "\042";
     BS = "\134";
+    CR = "\r";
     LF = "\n";
-    CRLF = "\r\n";
     SP = " ";
 
     VCHAR = "!" QQ \
@@ -134,7 +134,7 @@ function _consume_fws(_) {
     _["obuf"] = obuf;
 
     _["wsp1"] = next_token_arr(arr_wsp);
-    _["crlf"] = next_str(CRLF);
+    _["crlf"] = next_str(CR LF);
     _["wsp2"] = next_token_arr(arr_wsp);
 
     if (!_["wsp1"] && !_["wsp2"]) {
@@ -160,7 +160,7 @@ function _consume_obs_fws(_) {
     }
 
     while (1) {
-        _["crlf"] = next_str(CRLF);
+        _["crlf"] = next_str(CR LF);
         if (!_["crlf"]) { break; }
 
         _["tmp"] = _["tmp"] _["crlf"];
@@ -223,10 +223,10 @@ function _consume_obs_qp(_) {
         _["c"] = next_arr(arr_obs_no_ws_ctl);
         if (_["c"]) { return _["tmp"] _["c"]; }
 
-        _["lf"] = next_str("\n");
+        _["lf"] = next_str(LF);
         if (_["lf"]) { return _["tmp"] _["lf"]; }
 
-        _["cr"] = next_str("\r");
+        _["cr"] = next_str(CR);
         if (_["cr"]) { return _["tmp"] _["cr"]; }
     }
 
@@ -2000,7 +2000,7 @@ function within(str, chars, _) {
 function main(nr, str, _) {
     if (str ~ /^[\t ]/ && field != "") {
         # concat folded lines
-        buf = buf CRLF str;
+        buf = buf CR LF str;
         return 1;
     }
 
@@ -2027,6 +2027,8 @@ function main(nr, str, _) {
     return;
 }
 
+/\r$/ { $0 = substr($0, 1, length($0) - 1); }  # remove trailing CR
+NR == 1 && $/^From / { next; }  # skip MBOX first env-from line
 /^$/ { exit; }  # end of header
 { main(NR, $0); }
 END {
