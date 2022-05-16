@@ -133,11 +133,15 @@ function next_arr(array, _i, _) {
 
 function _consume_fws(_) {
     _["buf"] = buf;
+    _["obuf"] = obuf;
+
     _["wsp1"] = next_token_arr(arr_wsp);
     _["crlf"] = next_str(CRLF);
     _["wsp2"] = next_token_arr(arr_wsp);
+
     if (!_["wsp1"] && !_["wsp2"]) {
         buf = _["buf"];
+        obuf = _["obuf"];
         return "";
     }
 
@@ -147,10 +151,13 @@ function _consume_fws(_) {
 
 function _consume_obs_fws(_) {
     _["buf"] = buf;
+    _["obuf"] = obuf;
 
     _["tmp"] = next_token_arr(arr_wsp);
+
     if (!_["tmp"]) {
         buf = _["buf"];
+        obuf = _["obuf"];
         return "";
     }
 
@@ -162,6 +169,7 @@ function _consume_obs_fws(_) {
         _["wsp2"] = next_token_arr(arr_wsp);
         if (!_["wsp2"]) {
             buf = _["buf"];
+            obuf = _["obuf"];
             return "";
         }
         _["tmp"] = _["tmp"] _["wsp2"];
