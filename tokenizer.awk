@@ -337,9 +337,9 @@ function consume_day_of_week(_) {
         stack("day-name", _["day_name"]);
     }
     else {
+        diag_expect("([FWS] day-name)");
         buf = _["buf"];
         obuf = _["obuf"];
-        diag_expect("([FWS] day-name)");
         return "";
     }
 
@@ -400,9 +400,9 @@ function consume_day(_) {
     }
 
     if (!_["day"]) {
+        diag_expect("([FWS] 1*2DIGIT FWS) / obs-day");
         buf = _["buf"];
         obuf = _["obuf"];
-        diag_expect("([FWS] 1*2DIGIT FWS) / obs-day");
         return "";
     }
 
@@ -472,9 +472,9 @@ function consume_year(_) {
     }
 
     if (!_["year"]) {
+        diag_expect("(FWS 4*DIGIT FWS)");
         buf = _["buf"];
         obuf = _["obuf"];
-        diag_expect("(FWS 4*DIGIT FWS)");
         return "";
     }
 
@@ -604,9 +604,9 @@ function consume_minute(_) {
         return _["minute"];
     }
 
+    diag_expect("2DIGIT / obs-minute");
     buf = _["buf"];
     obuf = _["obuf"];
-    diag_expect("2DIGIT / obs-minute");
     return "";
 }
 
@@ -661,9 +661,9 @@ function consume_second(_) {
         return _["second"];
     }
 
+    diag_expect("2DIGIT / obs-second");
     buf = _["buf"];
     obuf = _["obuf"];
-    diag_expect("2DIGIT / obs-second");
     return "";
 }
 
@@ -721,9 +721,9 @@ function consume_zone(_) {
     }
 
     if (!_["tmp"]) {
+        diag_expect("(FWS ( " QQ "+" QQ " / " QQ "-" QQ " ) 4DIGIT) / obs-zone");
         buf = _["buf"];
         obuf = _["obuf"];
-        diag_expect("(FWS ( " QQ "+" QQ " / " QQ "-" QQ " ) 4DIGIT) / obs-zone");
         return "";
     }
 
@@ -738,18 +738,18 @@ function consume_time_of_day(_) {
 
     _["hour"] = consume_hour();
     if (!_["hour"]) {
+        diag_expect("2DIGIT / obs-hour");
         buf = _["buf"];
         obuf = _["obuf"];
-        diag_expect("2DIGIT / obs-hour");
         return "";
     }
     _["tmp"] = _["tmp"] _["hour"];
 
     _["colon1"] = next_str(":");
     if (!_["colon1"]) {
+        diag_expect("colon");
         buf = _["buf"];
         obuf = _["obuf"];
-        diag_expect("colon");
         return "";
     }
     _["tmp"] = _["tmp"] _["colon1"];
@@ -810,9 +810,9 @@ function consume_date_time(_) {
     if (_["dow"]) {
         _["comma"] = next_str(",");
         if (!_["comma"]) {
+            diag_expect("comma");
             buf = _["buf"];
             obuf = _["obuf"];
-            diag_expect("comma");
             return "";
         }
     }
@@ -909,9 +909,9 @@ function consume_mailbox_list(_) {
     }
 
     if (!_["tmp"]) {
+        diag_expect("(mailbox *(" QQ "," QQ " mailbox)) / obs-mbox-list");
         buf = _["buf"];
         obuf = _["obuf"];
-        diag_expect("(mailbox *(" QQ "," QQ " mailbox)) / obs-mbox-list");
         return "";
     }
 
@@ -1170,9 +1170,9 @@ function consume_angle_addr(_) {
     }
 
     if (!_["tmp"]) {
+        diag_expect("[CFWS] " QQ "<" QQ " addr-spec " QQ ">" QQ " [CFWS] / obs-angle-addr");
         buf = _["buf"];
         obuf = _["obuf"];
-        diag_expect("[CFWS] " QQ "<" QQ " addr-spec " QQ ">" QQ " [CFWS] / obs-angle-addr");
         return "";
     }
 
@@ -1485,17 +1485,101 @@ function consume_mailbox(_) {
     }
 
     if (!_["tmp"]) {
+        diag_expect("name-addr / addr-spec");
         buf = _["buf"];
         obuf = _["obuf"];
-        diag_expect("name-addr / addr-spec");
         return "";
     }
 
     return _["tmp"];
 }
 
-function consume_address_list() {
+function consume_address(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
     # TODO:
+}
+
+function _consume_address_list(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_address();
+
+    while (1) {
+        _["comma"] = next_str(",");
+        if (!_["comma"]) { break; }
+        _["tmp"] = _["tmp"] _["comma"];
+
+        _["addr"] = consume_address();
+        if (!_["addr"]) {
+            diag_expect("address");
+            buf = _["buf"];
+            obuf = _["obuf"];
+            return "";
+        }
+        _["tmp"] = _["tmp"] _["addr"];
+    }
+
+    return _["tmp"];
+}
+
+function _consume_obs_addr_list(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = "";
+
+    while (1) {
+        consume_cfws();
+        _["comma"] = next_str(",");
+        if (!_["comma"]) { break; }
+    }
+
+    _["addr"] = consume_address();
+    if (_["addr"]) {
+        diag_expect("address");
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+    _["tmp"] = _["tmp"] _["addr"];
+
+    while (1) {
+        _["comma"] = next_str(",");
+        if (!_["comma"]) { break; }
+        _["tmp"] = _["tmp"] _["comma"];
+
+        _["addr"] = consume_address();
+        if (!_["addr"]) {
+            consume_cfws();
+            continue;
+        }
+        _["tmp"] = _["tmp"] _["addr"];
+    }
+
+    return _["tmp"];
+}
+
+function consume_address_list(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = _consume_address_list();
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        _["tmp"] = _consume_obs_addr_list();
+    }
+
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["tmp"];
 }
 
 function consume_bcc() {
