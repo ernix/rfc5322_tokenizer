@@ -24,4 +24,5 @@ while test $# -gt 0; do
 done
 
 # c@public.example
+# joe@example.org
 # jdoe@one.test
