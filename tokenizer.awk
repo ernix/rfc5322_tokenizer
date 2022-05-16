@@ -1495,21 +1495,27 @@ function consume_mailbox(_) {
 }
 
 function consume_address_list() {
+    # TODO:
 }
 
 function consume_bcc() {
+    # TODO:
 }
 
 function consume_msg_id() {
+    # TODO:
 }
 
 function consume_references() {
+    # TODO:
 }
 
 function consume_path() {
+    # TODO:
 }
 
 function consume_received() {
+    # TODO:
 }
 
 function consume() {
