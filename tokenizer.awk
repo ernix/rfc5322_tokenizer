@@ -1714,7 +1714,7 @@ function consume_address_list(_) {
     return _["tmp"];
 }
 
-function consume_bcc() {
+function consume_bcc(_) {
     _["buf"] = buf;
     _["obuf"] = obuf;
 
@@ -1735,20 +1735,230 @@ function consume_bcc() {
     return _["tmp"];
 }
 
-function consume_msg_id() {
-    # TODO:
+function _consume_obs_id_left(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_local_part();
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["tmp"];
 }
 
-function consume_references() {
-    # TODO:
+function consume_id_left(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_dot_atom_text();
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        _["tmp"] = _consume_obs_id_left();
+    }
+
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["tmp"];
 }
 
-function consume_path() {
-    # TODO:
+function consume_no_fold_literal(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["op_bracket"] = next_str("[");
+    _["dtext"] = next_token(dtext);
+    _["cl_bracket"] = next_str("]");
+
+    if (!_["op_bracket"] || !_["dtext"] || !_["cl_bracket"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["op_bracket"] _["dtext"] _["cl_bracket"];
 }
 
-function consume_received() {
-    # TODO:
+function _consume_obs_id_right(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_domain();
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["tmp"];
+}
+
+function consume_id_right(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_dot_atom_text();
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        _["tmp"] = consume_no_fold_literal();
+    }
+
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        _["tmp"] = _consume_obs_id_right();
+    }
+
+
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["tmp"];
+}
+
+function consume_msg_id(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_cfws();
+
+    _["op_angle"] = next_str("<");
+    _["id_left"] = consume_id_left();
+    _["at"] = next_str("@");
+    _["id_right"] = consume_id_right();
+    _["cl_angle"] = next_str(">");
+
+    if ( !_["op_angle"] || !_["id_left"] || !_["at"] || !_["id_right"] || !_["cl_angle"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    stack("msg-id", _["id_left"] _["at"] _["id_right"]);
+    _["tmp"] = _["tmp"] _["op_angle"] _["id_left"] _["at"] _["id_right"] _["cl_angle"];
+    _["tmp"] = _["tmp"] consume_cfws();
+
+    return _["tmp"];
+}
+
+function consume_references(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = "";
+
+    while (1) {
+        _["msg_id"] = consume_msg_id();
+        if (!_["msg_id"]) { break; }
+        _["tmp"] = _["tmp"] _["msg_id"];
+    }
+
+    if (!_["tmp"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["tmp"];
+}
+
+function consume_path(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = consume_angle_addr();
+    if (_["tmp"]) {
+        return _["tmp"];
+    }
+
+    buf = _["buf"];
+    obuf = _["obuf"];
+
+    _["cfws1"] = consume_cfws();
+    _["op_angle"] = next_str("<");
+    _["cfws2"] = consume_cfws();
+    _["cl_angle"] = next_str(">");
+    _["cfws3"] = consume_cfws();
+
+    if (!_["op_angle"] || !_["cl_angle"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["cfws1"] _["op_angle"] _["cfws2"] _["cl_angle"] _["cfws3"];
+}
+
+function consume_received_token(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["word"] = consume_word();
+    if (_["word"]) { return _["word"]; }
+
+    buf = _["buf"];
+    obuf = _["obuf"];
+
+    _["angle_addr"] = consume_angle_addr();
+    if (_["angle_addr"]) { return _["angle_addr"]; }
+
+    buf = _["buf"];
+    obuf = _["obuf"];
+
+    _["addr_spec"] = consume_addr_spec();
+    if (_["addr_spec"]) { return _["addr_spec"]; }
+
+    buf = _["buf"];
+    obuf = _["obuf"];
+
+    _["domain"] = consume_domain();
+    if (_["domain"]) { return _["domain"]; }
+
+    buf = _["buf"];
+    obuf = _["obuf"];
+    return "";
+}
+
+function consume_received(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = "";
+
+    while (1) {
+        _["received_token"] = consume_received_token();
+        if (!_["received_token"]) { break; }
+        _["tmp"] = _["tmp"] _["received_token"];
+    }
+
+    _["semicolon"] = next_str(";");
+    if (!_["semicolon"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+    _["tmp"] = _["tmp"] _["semicolon"];
+
+    _["date_time"] = consume_date_time();
+    if (!_["date_time"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+    _["tmp"] = _["tmp"] _["date_time"];
+
+    return _["tmp"];
 }
 
 function consume() {
