@@ -287,7 +287,8 @@ function consume_comment(_) {
     _["tmp"] = _["tmp"] _["op_brace"];
 
     while (1) {
-        _["tmp"] = _["tmp"] consume_fws();
+        consume_fws();
+
         _["ccontent"] = consume_ccontent();
         if (!_["ccontent"]) { break; }
         _["tmp"] = _["tmp"] _["ccontent"];
@@ -307,7 +308,8 @@ function consume_cfws(_) {
     _["tmp"] = "";
 
     while (1) {
-        _["tmp"] = _["tmp"] consume_fws();
+        consume_fws();
+
         _["comment"] = consume_comment();
         if (_["comment"]) {
             stack("comment", _["comment"]);
@@ -318,8 +320,7 @@ function consume_cfws(_) {
         _["tmp"] = _["tmp"] _["comment"];
     }
 
-    _["fws"] = consume_fws();
-    _["tmp"] = _["tmp"] _["fws"];
+    consume_fws();
 
     return _["tmp"];
 }
@@ -328,7 +329,8 @@ function consume_day_of_week(_) {
     _["buf"] = buf;
     _["obuf"] = obuf;
 
-    _["fws"] = consume_fws();
+    consume_fws();
+
     _["day_name"] = next_arr(arr_week);
 
     if (_["day_name"]) {
@@ -341,8 +343,7 @@ function consume_day_of_week(_) {
         return "";
     }
 
-    _["tmp"] = _["fws"] _["day_name"];
-    return _["tmp"];
+    return _["day_name"];
 
 }
 
@@ -350,42 +351,42 @@ function _consume_day(_) {
     _["buf"] = buf;
     _["obuf"] = obuf;
 
-    _["fws1"] = consume_fws();
+    consume_fws();
+
     _["d1"] = next_arr(arr_digit);
     _["d2"] = next_arr(arr_digit);
-    _["fws2"] = consume_fws();
 
-    if (!_["d1"] || !_["fws2"]) {
+    _["fws"] = consume_fws();
+
+    if (!_["d1"] || !_["fws"]) {
         buf = _["buf"];
         obuf = _["obuf"];
         return "";
     }
-    else {
-        stack("day", _["d1"] _["d2"]);
-    }
 
-    return _["fws1"] _["d1"] _["d2"] _["fws2"];
+    stack("day", _["d1"] _["d2"]);
+    return _["d1"] _["d2"];
 }
 
 function _consume_obs_day(_) {
     _["buf"] = buf;
     _["obuf"] = obuf;
 
-    _["cfws1"] = consume_cfws();
+    consume_cfws();
+
     _["d1"] = next_arr(arr_digit);
     _["d2"] = next_arr(arr_digit);
-    _["cfws2"] = consume_cfws();
 
-    if (_["d1"]) {
-        stack("obs-day", _["d1"] _["d2"]);
-    }
-    else {
+    consume_cfws();
+
+    if (!_["d1"]) {
         buf = _["buf"];
         obuf = _["obuf"];
         return "";
     }
 
-    return _["cfws1"] _["d1"] _["d2"] _["cfws2"];
+    stack("obs-day", _["d1"] _["d2"]);
+    return _["d1"] _["d2"];
 }
 
 function consume_day(_) {
@@ -438,7 +439,7 @@ function _consume_year(_) {
     }
 
     stack("year", _["d1"] _["d2"] _["d3"] _["d4"] _["tmp"]);
-    return _["fws1"] _["d1"] _["d2"] _["d3"] _["d4"] _["tmp"] _["fws2"];
+    return _["d1"] _["d2"] _["d3"] _["d4"] _["tmp"];
 }
 
 function _consume_obs_year(_) {
@@ -670,7 +671,9 @@ function _consume_zone(_) {
     _["buf"] = buf;
     _["obuf"] = obuf;
 
-    _["tmp"] = consume_fws();
+    _["tmp"] = "";
+
+    consume_fws();
 
     _["sign"] = next_str("+");
     if (!_["sign"]) {
@@ -970,7 +973,7 @@ function consume_quoted_string(_) {
     _["tmp"] = _["tmp"] _["DQUOTE"];
 
     do {
-        _["tmp"] = _["tmp"] consume_fws();
+        consume_fws();
 
         _["qcontent"] = consume_qcontent();
         if (_["qcontent"]) {
@@ -981,7 +984,7 @@ function consume_quoted_string(_) {
         }
     } while (_["qcontent"])
 
-    _["tmp"] = _["tmp"] consume_fws();
+    consume_fws();
 
     _["DQUOTE"] = next_str(QQ);
     if (!_["DQUOTE"]) {
@@ -1371,13 +1374,14 @@ function consume_domain_literal(_) {
     _["tmp"] = _["tmp"] _["op_bracket"];
 
     while (1) {
-        _["tmp"] = _["tmp"] consume_fws();
+        consume_fws();
+
         _["dtext"] = consume_dtext();
         if (!_["dtext"]) { break; }
         _["tmp"] = _["tmp"] _["dtext"];
     }
 
-    _["tmp"] = _["tmp"] consume_fws();
+    consume_fws();
 
     _["cl_bracket"] = next_str("]");
     if (!_["cl_bracket"]) {
