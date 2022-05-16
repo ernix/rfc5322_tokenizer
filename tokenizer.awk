@@ -1723,7 +1723,7 @@ function consume_bcc() {
         buf = _["buf"];
         obuf = _["obuf"];
 
-        _["tmp"] = consume_cwfs();
+        _["tmp"] = consume_cfws();
     }
 
     if (!_["tmp"]) {
