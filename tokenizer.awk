@@ -1121,13 +1121,71 @@ function _consume_angle_addr(_) {
 }
 
 function consume_obs_domain_list(_) {
-    # TODO:
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = "";
+
+    while (1) {
+        _["tmp"] = _["tmp"] consume_cfws();
+        _["comma"] = next_str(",");
+        if (!_["comma"]) { break; }
+        _["tmp"] = _["tmp"] _["comma"];
+    }
+
+    _["at"] = next_str("@");
+    if (_["at"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+    _["tmp"] = _["tmp"] _["at"];
+
+    _["domain"] = consume_domain();
+    if (_["domain"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+    _["tmp"] = _["tmp"] _["domain"];
+
+    while (1) {
+        _["comma"] = next_str(",");
+        if (!_["comma"]) { break; }
+        _["tmp"] = _["tmp"] _["comma"];
+
+        _["tmp"] = _["tmp"] consume_cfws();
+
+        _["at"] = next_str("@");
+        if (!_["at"]) { continue; }
+        _["tmp"] = _["tmp"] _["at"];
+
+        _["domain"] = consume_domain();
+        if (_["domain"]) {
+            buf = _["buf"];
+            obuf = _["obuf"];
+            return "";
+        }
+        _["tmp"] = _["tmp"] _["domain"];
+    }
+
+    return _["tmp"];
 }
 
 function consume_obs_route(_) {
-    consume_obs_domain_list();
-    next_str(":");
-    # TODO:
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["obs_domain_list"] = consume_obs_domain_list();
+    _["colon"] = next_str(":");
+
+    if (!_["obs_domain_list"] || !_["colon"]) {
+        buf = _["buf"];
+        obuf = _["obuf"];
+        return "";
+    }
+
+    return _["obs_domain_list"] _["colon"];
 }
 
 function _consume_obs_angle_addr(_) {
