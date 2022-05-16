@@ -2024,7 +2024,7 @@ function main(nr, str, _) {
     field = "";
     buf = "";
     error = 1;
-    return;
+    return 0;
 }
 
 /\r$/ { $0 = substr($0, 1, length($0) - 1); }  # remove trailing CR
