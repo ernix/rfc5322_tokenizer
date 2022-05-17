@@ -46,12 +46,58 @@ except (TypeError, MessageError):
 
 If you don't have `formail(1)`, you still can loop over tokens. See `example.sh`.
 
+# USAGE
+
+`tokenizer.awk` is a filter program to produce array-like string that can be `eval`ed.
+
+Each elements represent list of key/value pairs, so if you want tokens in JSON
+format you would like to use some JSON converter like following:
+
+~~~sh
+#!/bin/sh
+
+# Convert tokens to JSON
+
+# Please see `Working with arrays` section in
+# Rich's sh (POSIX shell) tricks:
+# http://www.etalabs.net/sh_tricks.html
+eval "set -- $(awk -f tokenizer.awk)"
+
+# Each odd index number elements indicate token names.
+# Each even index number elements contain its token values.
+jq -n '[$ARGS.positional | _nwise(2) | {key: .[0], value: .[1]}]' --args "$@"
+~~~
+
+# SUPPORTED TOKENS
+
+* `addr-spec`
+* `comment`
+* `day-name`
+* `day`
+* `field-name`
+* `hour`
+* `minute`
+* `month`
+* `msg-id`
+* `obs-day`
+* `obs-hour`
+* `obs-minute`
+* `obs-phrase`
+* `obs-second`
+* `obs-year`
+* `obs-zone`
+* `phrase`
+* `second`
+* `unstructured`
+* `year`
+* `zone`
+
 # TESTING
 
 ~~~
 $ prove
 ~~~
 
-# Hey! `eval` is poking my eyes out! What is this heck?
+# SEE ALSO
 
-Please see `Working with arrays` section in [Rich's sh (POSIX shell) tricks](http://www.etalabs.net/sh_tricks.html)
+* [RFC 5322](https://datatracker.ietf.org/doc/html/rfc5322)
