@@ -1607,6 +1607,7 @@ function consume_addr_spec(_) {
 function consume_mailbox(_) {
     _["buf"] = buf;
     _["obuf"] = obuf;
+    stack("---", "mailbox");
 
     _["tmp"] = consume_name_addr();
     if (!_["tmp"]) {
@@ -1651,6 +1652,7 @@ function consume_obs_group_list(_) {
 function consume_group_list(_) {
     _["buf"] = buf;
     _["obuf"] = obuf;
+    stack("---", "group-list");
 
     _["tmp"] = consume_mailbox_list();
     if (_["tmp"]) { return _["tmp"]; }
@@ -1677,6 +1679,7 @@ function consume_group_list(_) {
 function consume_group(_) {
     _["buf"] = buf;
     _["obuf"] = obuf;
+    stack("---", "group");
 
     _["tmp"] = consume_display_name();
     if (!_["tmp"]) {

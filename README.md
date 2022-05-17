@@ -65,7 +65,7 @@ eval "set -- $(awk -f tokenizer.awk)"
 
 # Each even index number elements indicate token names.
 # Each odd index number elements contain its token values.
-jq -n '[$ARGS.positional | _nwise(2) | {key: .[0], value: .[1]}]' --args "$@"
+jq -n '[$ARGS.positional | _nwise(2) | {key: .[0], value: .[1]}]' --args -- "$@"
 ~~~
 
 # SUPPORTED TOKENS
@@ -91,6 +91,9 @@ jq -n '[$ARGS.positional | _nwise(2) | {key: .[0], value: .[1]}]' --args "$@"
 * `unstructured`
 * `year`
 * `zone`
+
+* `---`
+    Special marker token to represent separators for ambiguous nested structures.
 
 # TESTING
 
