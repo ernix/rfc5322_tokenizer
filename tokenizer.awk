@@ -2015,7 +2015,9 @@ function consume_received(_) {
     return _["tmp"];
 }
 
-function consume() {
+function consume(_) {
+    _["known_header"] = 1;
+
     if (field == "Date") { consume_date_time(); }
     else if (field == "From") { consume_mailbox_list(); }
     else if (field == "Sender") { consume_mailbox(); }
@@ -2034,7 +2036,9 @@ function consume() {
     else if (field == "Recent-Message-ID") { consume_msg_id(); }
     else if (field == "Return-Path") { consume_path(); }
     else if (field == "Received") { consume_received(); }
+    else { _["known_header"] = 0; }
 
+    if (buf && _["known_header"]) { error = 1; }
     flush();
 
     return 1;
