@@ -6,13 +6,11 @@ BEGIN {
     BS = "\134";
     CR = "\r";
     LF = "\n";
-    SP = " ";
+    SP = "\040";
 
-    VCHAR = "!" QQ \
+    split("!" QQ \
         "#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[" \
-        BS "]^_`abcdefghijklmnopqrstuvwxyz{|}~";
-
-    split(VCHAR, arr_vchar, "");
+        BS "]^_`abcdefghijklmnopqrstuvwxyz{|}~", arr_vchar, "");
 
     ftext = "!" QQ "#$%&'()*+,-./0123456789" \
          ";<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[" BS \
@@ -42,11 +40,11 @@ BEGIN {
     dtext = "!" QQ "#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
         "^_`abcdefghijklmnopqrstuvwxyz{|}~";
 
-    split("Mon Tue Wed Thu Fri Sat Sun", arr_week, " ");
-    split("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec", arr_month, " ");
+    split("Mon Tue Wed Thu Fri Sat Sun", arr_week, SP);
+    split("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec", arr_month, SP);
     split("\t| ", arr_wsp, "|");
     split("0123456789", arr_digit, "");
-    split("UT GMT EST EDT CST CDT MST MDT PST PDT", arr_obs_zone, " ");
+    split("UT GMT EST EDT CST CDT MST MDT PST PDT", arr_obs_zone, SP);
 
     field = "";
     buf = "";
@@ -2087,6 +2085,6 @@ NR == 1 && /^From / { next; }  # skip MBOX first env-from line
 { main(NR, $0); }
 END {
     consume();
-    print " ";  # dismiss last backslash produced by `stack()`
+    print SP;  # dismiss last backslash produced by `stack()`
     exit error;
 }
