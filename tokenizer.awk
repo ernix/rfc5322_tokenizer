@@ -50,6 +50,7 @@ BEGIN {
     buf = "";
     obuf = "";
     error = 0;
+    header_nr = 0;
 }
 
 function ltrim(str) {
@@ -2124,7 +2125,7 @@ function main(nr, str, _) {
     _["idx"] = index(str, ":");
     if (_["idx"] > 1) {
         if (field != "") {
-            consume(nr);
+            consume(header_nr);
         }
 
         field = substr(str, 1, _["idx"] - 1);
@@ -2132,6 +2133,7 @@ function main(nr, str, _) {
             stack("field-name", field);
             flush();
             buf = substr(str, _["idx"] + 1, length(str));
+            header_nr = nr;
             return 1;
         }
     }
