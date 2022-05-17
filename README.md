@@ -8,7 +8,7 @@ $ awk --posix -f ./tokenizer.awk path/to/some.mbox
 
 $ sh -c 'eval "set -- $1"; printf %s\\n "$@"' -- \
     "$(<path/to/some.mbox formail -X To: | awk --posix -f ./tokenizer.awk)" \
-    | sed -n '/^addr-spec$/ {n;p}'
+    | paste -sd "\t\n" | awk '$1 == "addr-spec" { print $2; }'
 ~~~
 
 # DESCRIPTION
