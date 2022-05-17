@@ -2015,7 +2015,7 @@ function consume_received(_) {
     return _["tmp"];
 }
 
-function consume(_) {
+function consume(nr, _) {
     _["known_header"] = 1;
 
     if (field == "Date") { consume_date_time(); }
@@ -2038,7 +2038,11 @@ function consume(_) {
     else if (field == "Received") { consume_received(); }
     else { _["known_header"] = 0; }
 
-    if (buf && _["known_header"]) { error = 1; }
+    if (buf && _["known_header"]) {
+        diag(nr ": Parse error: " field);
+        error = 1;
+    }
+
     flush();
 
     return 1;
@@ -2066,7 +2070,7 @@ function main(nr, str, _) {
     _["idx"] = index(str, ":");
     if (_["idx"] > 1) {
         if (field != "") {
-            consume();
+            consume(nr);
         }
 
         field = substr(str, 1, _["idx"] - 1);
@@ -2099,7 +2103,7 @@ NR == 1 && /^From / {
 }
 { main(NR, $0); }
 END {
-    consume();
+    consume(NR);
     print SP;  # dismiss last backslash produced by `stack()`
     exit error;
 }
