@@ -103,7 +103,6 @@ for my $file (keys %tests) {
 
         is $status, (defined $expect ? 0 : 1), "$file status";
         if (defined $expect) {
-            is $status, 0, "$file status";
             is_deeply \@addrs, $expect, "$file to addrs";
         }
     }, $tests{$file};
