@@ -5,8 +5,8 @@ use utf8;
 use open qw/:std :encoding(UTF-8)/;
 use Test::More;
 use FindBin qw($RealBin);
-use File::Spec::Functions qw(updir catfile);
-use IPC::Open2;
+use File::Spec::Functions qw(updir catfile devnull);
+use IPC::Open3;
 use JSON::PP;
 
 my $base_dir = catfile($RealBin, updir());
@@ -18,14 +18,15 @@ sub tokenize {
     open my $fh_mbox, '<', catfile($RealBin, updir(), 'sample', $mbox);
 
     my ($fh_in, $fh_out);
-    my $pid = open2($fh_out, $fh_in,
+    my $pid = open3($fh_in, $fh_out, devnull(),
         '/usr/bin/awk', -f => $tokenizer);
+
     print {$fh_in} $_ while <$fh_mbox>;
     close $fh_in;
     close $fh_mbox;
 
     waitpid $pid, 0;
-    is $? >> 8, 0, 'status';
+    my $status = $? >> 8;
 
     my $token = do { local $/; <$fh_out> };
     close $fh_out;
@@ -37,10 +38,13 @@ sub tokenize {
         '--', $token;
 
     my $json = do { local $/; <$fh> };
-    return scalar decode_json($json);
+    return $status, decode_json($json);
 }
 
 my %tests = (
+    'rfc5322_appendix_a_1_1.mbox' => [qw(
+        mary@example.net
+    )],
     'rfc5322_appendix_a_1_2.mbox' => [qw(
         mary@x.test
         jdoe@example.org
@@ -51,18 +55,34 @@ my %tests = (
         joe@where.test
         jdoe@one.test
     )],
+    'rfc5322_appendix_a_2.mbox' => [qw(
+        smith@home.example
+    )],
+    'rfc5322_appendix_a_3.mbox' => [qw(
+        mary@example.net
+    )],
+    'rfc5322_appendix_a_4.mbox' => [qw(
+        mary@example.net
+    )],
     'rfc5322_appendix_a_5.mbox' => [qw(
         c@public.example
         joe@example.org
         jdoe@one.test
     )],
+    'rfc5322_appendix_a_6_1.mbox' => [qw(
+    )],
+    'rfc5322_appendix_a_6_2.mbox' => [qw(
+        mary@example.net
+    )],
+    'rfc5322_appendix_a_6_3.mbox' => undef(),
 );
 
 for my $file (keys %tests) {
     subtest $file => sub {
         my $expect = shift;
-        my @tok = @{tokenize($file)};
+        my ($status, $token) = tokenize($file);
 
+        my @tok = @{$token};
         my @addrs;
         my $header = q{};
         while (@tok) {
@@ -81,7 +101,11 @@ for my $file (keys %tests) {
             }
         }
 
-        is_deeply \@addrs, $expect;
+        is $status, (defined $expect ? 0 : 1), "$file status";
+        if (defined $expect) {
+            is $status, 0, "$file status";
+            is_deeply \@addrs, $expect, "$file to addrs";
+        }
     }, $tests{$file};
 }
 
