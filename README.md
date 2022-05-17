@@ -44,7 +44,14 @@ except (TypeError, MessageError):
     pass
 ~~~
 
-If you don't have `formail(1)`, you still can loop over tokens. See `example.sh`.
+The `-c` option of `formail(1)` is to ensure LF as separator for futher processes.
+
+> -c   Concatenate continued fields in the header.  Might be convenient
+>      when postprocessing mail with standard (line oriented) text
+>      utilities.
+
+
+You still can loop over tokens safely without formail. See `example.sh`.
 
 # USAGE
 
