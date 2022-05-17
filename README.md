@@ -46,6 +46,8 @@ except (TypeError, MessageError):
 
 The `-c` option of `formail(1)` is to ensure LF as separator for futher processes.
 
+Because tokens may contain any ASCII control characters. (even NUL, see `obs-utext` in [RFC 5322][])
+
 > -c   Concatenate continued fields in the header.  Might be convenient
 >      when postprocessing mail with standard (line oriented) text
 >      utilities.
@@ -110,4 +112,4 @@ $ prove
 
 # SEE ALSO
 
-* [RFC 5322](https://datatracker.ietf.org/doc/html/rfc5322)
+[RFC 5322]: https://datatracker.ietf.org/doc/html/rfc5322
