@@ -345,6 +345,27 @@ function consume_cfws(_) {
     return _["tmp"];
 }
 
+# Same as consume_cfws, but discard comment
+function _consume_cfws(_) {
+    _["tmp"] = "";
+
+    while (1) {
+        _["tmp"] = _["tmp"] consume_fws();
+
+        _["comment"] = consume_comment();
+        if (_["comment"]) {
+            stack("comment", _["comment"]);
+        }
+        else {
+            break;
+        }
+    }
+
+    _["tmp"] = _["tmp"] consume_fws();
+
+    return _["tmp"];
+}
+
 function consume_day_of_week(_) {
     _["buf"] = buf;
     _["obuf"] = obuf;
@@ -959,7 +980,7 @@ function consume_atom(_) {
     _["buf"] = buf;
     _["obuf"] = obuf;
 
-    _["cfws1"] = consume_cfws();
+    _["cfws1"] = _consume_cfws();
 
     _["atom"] = next_token(atext);
     if (!_["atom"]) {
@@ -968,7 +989,7 @@ function consume_atom(_) {
         return "";
     }
 
-    _["cfws2"] = consume_cfws();
+    _["cfws2"] = _consume_cfws();
 
     return _["cfws1"] _["atom"] _["cfws2"];
 }
@@ -1104,9 +1125,14 @@ function _consume_obs_phrase(_) {
             continue;
         }
 
+        # XXX: Need to check if cfws exist, but don't want comment
+        _["_buf"] = buf;
+        _["_obuf"] = obuf;
         _["rest"] = consume_cfws();
         if (_["rest"]) {
-            _["tmp"] = _["tmp"] _["rest"];
+            buf = _["_buf"];
+            obuf = _["_obuf"];
+            _["tmp"] = _["tmp"] _consume_cfws();
             continue;
         }
 
@@ -1628,8 +1654,16 @@ function consume_group_list(_) {
     _["tmp"] = consume_mailbox_list();
     if (_["tmp"]) { return _["tmp"]; }
 
+    # XXX: Need to check if cfws exist, but don't want comment
+    _["_buf"] = buf;
+    _["_obuf"] = obuf;
     _["tmp"] = consume_cfws();
-    if (_["tmp"]) { return _["tmp"]; }
+    if (_["tmp"]) {
+        buf = _["_buf"];
+        obuf = _["_obuf"];
+        _["tmp"] = _consume_cfws();
+        return _["tmp"];
+    }
 
     _["tmp"] = consume_obs_group_list();
     if (_["tmp"]) { return _["tmp"]; }
@@ -1774,7 +1808,7 @@ function consume_bcc(_) {
     if (!_["tmp"]) {
         buf = _["buf"];
         obuf = _["obuf"];
-        _["tmp"] = consume_cfws();
+        _["tmp"] = _consume_cfws();
     }
 
     if (!_["tmp"]) {
