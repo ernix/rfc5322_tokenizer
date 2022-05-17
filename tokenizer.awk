@@ -1065,11 +1065,11 @@ function _consume_phrase(_) {
     _["obuf"] = obuf;
 
     _["tmp"] = "";
-    do {
+    while (1) {
         _["word"] = consume_word();
         if (!_["word"]) { break; }
         _["tmp"] = _["tmp"] _["word"];
-    } while (1)
+    }
 
     if (!_["tmp"]) {
         buf = _["buf"];
