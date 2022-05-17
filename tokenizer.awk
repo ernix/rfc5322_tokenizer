@@ -362,7 +362,6 @@ function consume_day_of_week(_) {
 
     stack("day-name", _["day_name"]);
     return _["day_name"];
-
 }
 
 function _consume_day(_) {
