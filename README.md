@@ -46,6 +46,12 @@ except (TypeError, MessageError):
 
 If you don't have `formail(1)`, you still can loop over tokens. See `example.sh`.
 
+# TESTING
+
+~~~
+$ prove
+~~~
+
 # Hey! `eval` is poking my eyes out! What is this heck?
 
 Please see `Working with arrays` section in [Rich's sh (POSIX shell) tricks](http://www.etalabs.net/sh_tricks.html)
