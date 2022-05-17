@@ -46,7 +46,7 @@ except (TypeError, MessageError):
 
 The `-c` option of `formail(1)` is to ensure LF as separator for futher processes.
 
-Because tokens may contain any ASCII control characters. (even NUL, see `obs-utext` in [RFC 5322][])
+Because tokens may contain any ASCII control characters. (even NUL, see `obs-utext` in RFC[^1])
 
 > -c   Concatenate continued fields in the header.  Might be convenient
 >      when postprocessing mail with standard (line oriented) text
@@ -110,6 +110,4 @@ jq -n '[$ARGS.positional | _nwise(2) | {key: .[0], value: .[1]}]' --args -- "$@"
 $ prove
 ~~~
 
-# SEE ALSO
-
-[RFC 5322]: https://datatracker.ietf.org/doc/html/rfc5322
+[^1]: https://datatracker.ietf.org/doc/html/rfc5322
