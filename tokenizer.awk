@@ -2049,6 +2049,25 @@ function consume_received(_) {
     return _["tmp"];
 }
 
+function consume_keywords(_) {
+    _["buf"] = buf;
+    _["obuf"] = obuf;
+
+    _["tmp"] = "";
+
+    do {
+        _["phrase"] = consume_phrase();
+        if (!_["phrase"]) {
+            buf = _["buf"];
+            obuf = _["obuf"];
+            return "";
+        }
+
+        _["tmp"] = _["tmp"] _["phrase"];
+        _["comma"] = next_str(",");
+    } while (_["comma"])
+}
+
 function consume(nr, _) {
     _["known_header"] = 1;
 
@@ -2070,6 +2089,7 @@ function consume(nr, _) {
     else if (field == "Recent-Message-ID") { consume_msg_id(); }
     else if (field == "Return-Path") { consume_path(); }
     else if (field == "Received") { consume_received(); }
+    else if (field == "Keywords") { consume_keywords(); }
     else { _["known_header"] = 0; }
 
     if (buf && _["known_header"]) {
