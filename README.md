@@ -63,8 +63,8 @@ format you would like to use some JSON converter like following:
 # http://www.etalabs.net/sh_tricks.html
 eval "set -- $(awk -f tokenizer.awk)"
 
-# Each odd index number elements indicate token names.
-# Each even index number elements contain its token values.
+# Each even index number elements indicate token names.
+# Each odd index number elements contain its token values.
 jq -n '[$ARGS.positional | _nwise(2) | {key: .[0], value: .[1]}]' --args "$@"
 ~~~
 
