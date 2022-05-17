@@ -6,9 +6,9 @@ Pure POSIX-compliant RFC 5322 tokenizer
 ~~~
 $ awk --posix -f ./tokenizer.awk path/to/some.mbox
 
-$ sh -c 'eval "set -- $1"; printf %s\\n "$@"' -- \
-    "$(<path/to/some.mbox formail -X To: | awk --posix -f ./tokenizer.awk)" \
-    | paste -sd "\t\n" | awk '$1 == "addr-spec" { print $2; }'
+$ sh -c 'eval "set -- $1"; printf %s\\t%s\\n "$@"' -- \
+    "$(<path/to/some.mbox formail -c -X To: | awk --posix -f ./tokenizer.awk)" \
+    | awk '$1 == "addr-spec" { print $2; }'
 ~~~
 
 # DESCRIPTION
