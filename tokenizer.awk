@@ -1074,6 +1074,8 @@ function _consume_phrase(_) {
         return "";
     }
 
+    # According to 3.2.5, leading/trailing CFWS is a part of `phrase`,
+    # but for practical reason these are better to be trimmed.
     stack("phrase", trim(_["tmp"]));
     return _["tmp"];
 }
@@ -2079,9 +2081,18 @@ function main(nr, str, _) {
     return 0;
 }
 
-/\r$/ { $0 = substr($0, 1, length($0) - 1); }  # remove trailing CR
-NR == 1 && /^From / { next; }  # skip MBOX first env-from line
-/^$/ { exit; }  # end of header
+/\r$/ {
+    # Remove trailing CR if exists
+    $0 = substr($0, 1, length($0) - 1);
+}
+NR == 1 && /^From / {
+    # Skip MBOX separater line, see RFC 4155.
+    next;
+}
+/^$/ {
+    # End of header
+    exit;
+}
 { main(NR, $0); }
 END {
     consume();
