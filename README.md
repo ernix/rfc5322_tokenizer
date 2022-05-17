@@ -57,7 +57,7 @@ You still can loop over tokens safely without formail. See `example.sh`.
 
 # USAGE
 
-`tokenizer.awk` is a filter program to produce array-like string that can be `eval`ed.
+`tokenizer.awk` is a filter program to produce array-like string that can be `eval`ed[^2].
 
 Each elements represent list of key/value pairs, so if you want tokens in JSON
 format you would like to use some JSON converter like following:
@@ -111,3 +111,4 @@ $ prove
 ~~~
 
 [^1]: https://datatracker.ietf.org/doc/html/rfc5322
+[^2]: http://www.etalabs.net/sh_tricks.html
