@@ -126,19 +126,6 @@ function flush() {
     obuf = "";
 }
 
-function markout(stash, anchor) {
-    stash["buf"] = buf;
-    stash["obuf"] = obuf;
-    if (anchor) { stack("---", anchor); }
-    return 1;
-}
-
-function rollback(stash) {
-    buf = stash["buf"];
-    obuf = stash["obuf"];
-    return 1;
-}
-
 function next_token(chars, _) {
     _["len"] = length(buf);
     for (_["pos"] = 0; _["pos"]++ < _["len"];) {
