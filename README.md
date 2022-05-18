@@ -11,19 +11,52 @@ $ sh -c 'eval "set -- $1"; printf %s\\t%s\\n "$@"' -- \
     | awk '$1 == "addr-spec" { print $2; }'
 ~~~
 
+The `-c` option of `formail(1)` here is important, because tokens may contain any
+ASCII control characters. (even NUL, see `obs-utext` in RFC[^1])
+
+> -c   Concatenate continued fields in the header.  Might be convenient
+>      when postprocessing mail with standard (line oriented) text
+>      utilities.
+
+You still can loop over tokens safely without formail. See `example.sh` for more detail.
+
 # DESCRIPTION
+
+`tokenizer.awk` is a filter program to produce array-like string that can be `eval`ed[^2].
+
+Each elements are flattened key/value pairs, you can convert each tokens in JSON
+format if you have access to JSON encoder/decoder such as `jq(1)`:
+
+~~~sh
+#!/bin/sh
+
+# Convert tokens to JSON
+
+# Please see `Working with arrays` section in
+# Rich's sh (POSIX shell) tricks:
+# http://www.etalabs.net/sh_tricks.html
+eval "set -- $(awk -f tokenizer.awk)"
+
+# Each even index number elements indicate token names.
+# Each odd index number elements contain its token values.
+jq -n '[$ARGS.positional | _nwise(2) | {key: .[0], value: .[1]}]' --args -- "$@"
+~~~
+
+# MOTIVATION
 
 Email is tough.
 
 When you try to extract recipients from mail headers, you will need to install
 some fatty RFC 5322 parsers or will end up with horribly wrong regex solutions.
 
+Despite the importance of Email system (it's too universal, and therefore can be a major attack vector),
+there is no standard/promised/built-in/portable/easy-to-use/whatever ways, to do this simple task.
+
 This awk script is my personal experiment to solve the problem without external tools/libraries.
 
-If you have access to perl/CPAN, there is [Email::Address](https://metacpan.org/pod/Email::Address).
+If you can install CPAN modules, you should try [Email::Address::XS](https://metacpan.org/pod/Email::Address::XS).
 
-If you can use newer versions of Python, the following code will do the same
-thing of the 2nd example in SYNOPSIS section:
+If you can use newer versions of Python (Batteries included!), the following code gives exact same result as `example.sh`:
 
 ~~~python
 import sys
@@ -42,39 +75,6 @@ try:
             print(addr.addr_spec)
 except (TypeError, MessageError):
     pass
-~~~
-
-The `-c` option of `formail(1)` is to ensure LF as separator for futher processes.
-
-Because tokens may contain any ASCII control characters. (even NUL, see `obs-utext` in RFC[^1])
-
-> -c   Concatenate continued fields in the header.  Might be convenient
->      when postprocessing mail with standard (line oriented) text
->      utilities.
-
-
-You still can loop over tokens safely without formail. See `example.sh`.
-
-# USAGE
-
-`tokenizer.awk` is a filter program to produce array-like string that can be `eval`ed[^2].
-
-Each elements represent list of key/value pairs, so if you want tokens in JSON
-format you would like to use some JSON converter like following:
-
-~~~sh
-#!/bin/sh
-
-# Convert tokens to JSON
-
-# Please see `Working with arrays` section in
-# Rich's sh (POSIX shell) tricks:
-# http://www.etalabs.net/sh_tricks.html
-eval "set -- $(awk -f tokenizer.awk)"
-
-# Each even index number elements indicate token names.
-# Each odd index number elements contain its token values.
-jq -n '[$ARGS.positional | _nwise(2) | {key: .[0], value: .[1]}]' --args -- "$@"
 ~~~
 
 # SUPPORTED TOKENS
