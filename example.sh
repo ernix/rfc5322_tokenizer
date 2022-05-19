@@ -2,7 +2,8 @@
 
 # Extract email addresses in To: header
 
-eval "set -- $(awk -f ./tokenizer.awk sample/rfc5322_appendix_a_5.mbox)"
+dir=$(cd "$(dirname "$0")" && pwd)
+eval "set -- $(awk -f "$dir/tokenizer.awk" "$dir/sample/rfc5322_appendix_a_5.mbox")"
 
 header=
 while test $# -gt 0; do
