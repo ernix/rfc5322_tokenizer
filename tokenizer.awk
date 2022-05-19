@@ -1724,16 +1724,24 @@ function consume_received_token(_) {
     return 0;
 }
 
-# received = "Received:" *received-token ";" date-time CRLF
+# Errata 3979: https://www.rfc-editor.org/errata/eid3979
+# received = "Received:" [1*received-token / CFWS]
+#              ";" date-time CRLF
 function consume_received(_) {
     split("", _); markout(_);
 
     _["tmp"] = "";
 
+    _["seen"] = 0;
     while (1) {
         _["received_token"] = consume_received_token();
         if (z(_["received_token"])) { break; }
         _["tmp"] = _["tmp"] _["received_token"];
+        _["seen"]++;
+    }
+
+    if (!_["seen"]) {
+        _["tmp"] = _["tmp"] optional(consume_cfws());
     }
 
     _["semicolon"] = next_str(";");
