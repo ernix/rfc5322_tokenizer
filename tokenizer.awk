@@ -51,7 +51,11 @@ BEGIN {
 
     field = "";
     buf = "";
+    gbuf = "";
     obuf = "";
+    ebuf[0] = "";
+    ebuf[1] = "";
+    ebuf_flipflop = 0;
     error = 0;
     header_nr = 0;
 }
@@ -141,7 +145,14 @@ function markout(stash, anchor) {
     return 1;
 }
 
-function rollback(stash) {
+function rollback(stash, _) {
+    _["buflen"] = length(gbuf);
+    _["pos"] = _["buflen"] - length(stash["buf"]);
+
+    ebuf[++ebuf_flipflop % 2] = "pos:" _["pos"] SP "[" field "]:" \
+        substr(gbuf, 0, _["pos"]) \
+        "\033[31m" substr(gbuf, _["pos"] + 1, _["buflen"]) "\033[0m";
+
     buf = stash["buf"];
     obuf = stash["obuf"];
     return 1;
@@ -1757,6 +1768,7 @@ function consume_keywords(_) {
 
 function consume(nr, _) {
     _["success"] = 0;
+    gbuf = buf;
 
     if (field == "Date") { _["success"] = consume_date_time(); }
     else if (field == "From") { _["success"] = consume_mailbox_list(); }
@@ -1780,7 +1792,8 @@ function consume(nr, _) {
     else { _["success"] = 1; } # unknown header
 
     if (!_["success"]) {
-        diag(nr ": Parse error: " field);
+        # the last but one rollback history
+        diag("ERROR: line:" nr SP ebuf[(ebuf_flipflop + 1) % 2]);
         error = 1;
     }
 
@@ -1845,7 +1858,7 @@ NR == 1 && /^From / {
 }
 { main(NR, $0); }
 END {
-    consume(NR);
+    consume(header_nr);
     print SP;  # dismiss last backslash produced by `stack()`
     exit error;
 }
