@@ -104,6 +104,11 @@ except (TypeError, MessageError):
 * `---`
     Special marker token to represent separators for ambiguous nested structures.
 
+## `Received`
+
+* `domain`
+* `word`
+
 # TESTING
 
 ~~~

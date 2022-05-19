@@ -1712,13 +1712,21 @@ function consume_received_token(_) {
     rollback(_);
 
     _["domain"] = consume_domain();
-    if (!z(_["domain"])) { return _["domain"]; }
+    if (!z(_["domain"])) {
+        # XXX: `domain` includes part of `word`
+        if (index(_["domain"], ".") > 0) {
+            stack("domain", _["domain"]);
+            return _["domain"];
+        }
+    }
 
     rollback(_);
 
-    # XXX: `domain` starts with `word`
     _["word"] = consume_word();
-    if (!z(_["word"])) { return _["word"]; }
+    if (!z(_["word"])) {
+        stack("word", _["word"]);
+        return _["word"];
+    }
 
     rollback(_);
     return 0;
