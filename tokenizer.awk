@@ -1837,7 +1837,7 @@ function main(nr, str, _) {
         }
     }
 
-    diag(nr ": Malformed header line: " str);
+    diag("ERROR: line:" nr " Malformed header: " str);
     field = "";
     buf = "";
     error = 1;
