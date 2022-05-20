@@ -354,14 +354,20 @@ function consume_comment(_) {
     if (z(_["op_brace"])) { rollback(_); return 0; }
     _["tmp"] = _["tmp"] _["op_brace"];
 
+    _["comment"] = "";
     while (1) {
         _["fws"] = consume_fws();
-        if (!z(_["fws"])) { _["tmp"] = _["tmp"] _["fws"]; }
+        if (!z(_["fws"])) {
+            _["comment"] = _["comment"] _["fws"];
+        }
 
         _["ccontent"] = consume_ccontent();
         if (z(_["ccontent"])) { break; }
-        _["tmp"] = _["tmp"] _["ccontent"];
+        _["comment"] = _["comment"] _["ccontent"];
     }
+
+    stack("comment", _["comment"]);
+    _["tmp"] = _["tmp"] _["comment"];
 
     _["cl_brace"] = next_str(")");
     if (z(_["cl_brace"])) { rollback(_); return 0; }
@@ -381,8 +387,7 @@ function consume_cfws(_) {
 
         _["comment"] = consume_comment();
         if (!z(_["comment"])) {
-            stack("comment", _["comment"]);
-            # Skip comments, loved by only spammers
+            # Skip comments
             _["comment_found"]++;
         }
         else {
@@ -1714,6 +1719,8 @@ function consume_received_token(_) {
     _["domain"] = consume_domain();
     if (!z(_["domain"])) {
         # XXX: `domain` includes part of `word`
+        # This code mistakes dot-less domains such as `localhost` for a word
+        # but it is a matter of RFC 5321, not RFC 5322.
         if (index(_["domain"], ".") > 0) {
             stack("domain", _["domain"]);
             return _["domain"];
