@@ -743,11 +743,17 @@ function _consume_zone(_) {
 function _consume_obs_zone(_) {
     split("", _); markout(_);
 
+    _["tmp"] = "";
+
+    # https://www.rfc-editor.org/errata/eid6639
+    _["tmp"] = _["tmp"] optional(consume_fws());
+
     _["zone"] = next_arr(arr_obs_zone);
     if (z(_["zone"])) { rollback(_); return 0; }
+    _["tmp"] = _["tmp"] _["zone"];
 
     stack("obs-zone", _["zone"]);
-    return _["zone"];
+    return _["tmp"];
 }
 
 # zone = (FWS ( "+" / "-" ) 4DIGIT) / obs-zone
