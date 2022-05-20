@@ -1,59 +1,93 @@
 #!/bin/sh
 
-# Trace chained Received headers and find the trust anchor
-# If some forged header found, exit with status 1.
+#
+# Compare sequencial headers to find a forged `Received:` header.
+#
+# Assume the first `Received:` header as an trust anchor,
+# dig up and output the last trusty server name.
+#
+# Return exit code 1 If found a forged header.
+#
 
 dir=$(cd "$(dirname "$0")" && pwd)
 eval "set -- $(awk -f "$dir/tokenizer.awk")"
 
-header=
-trace_key=
+_trust_received_header() {
+  # $1: by, $2: prev_from
+  if test -z "$1"; then
+    return 1
+  fi
+
+  if test -z "$2"; then
+    return 0
+  fi
+
+  # if previous "from" not contains current "by"
+  if test "${2#*"$1"}" = "$2"; then
+    return 1
+  fi
+
+  return 0
+}
+
 from=
 by=
-ex_from=
-orig=
+prev_from=
+prev_by=
+header=
+prep=
+trust=
 while test $# -gt 0; do
   key="$1"; shift
   value="$1"; shift
 
-  case "$header:$trace_key:$key" in
+  case "$header:$prep:$key" in
     *:field-name)
-      trace_key=
+      if ! _trust_received_header "$by", "$prev_from"; then
+        trust="$prev_by"
+        break
+      fi
+      prep=
       header="$value"
-      continue
       ;;
     Received:from:comment)
-      ex_from="$from"
+      prev_from="$from"
       from="$value"
       ;;
     Received:by:domain)
-      if test -n "$ex_from"; then
-        if test "${ex_from#*"$value"}" = "$ex_from"; then
-          orig="$by"
-          break
-        fi
-      fi
+      prev_by="$by"
       by="$value"
       ;;
     Received:*)
       case $value in
         from|by|via|with|id|for)
-          trace_key="$value"
+          # In fact, RFC 5321 specifies strict token order in trace info,
+          # but this script doesn't care.
+          # In any case, malicious `Received:` headers can't predict next (the
+          # one right above) header that will be used for tracing.
+          prep="$value"
           ;;
         *)
           ;;
       esac
       ;;
     *)
-      trace_key=
+      prep=
       ;;
   esac
 done
 
-if test -n "$orig"; then
-  printf "%s\n" "$orig"
+# In case when the last header is `Received:`
+if test "$header" = "Received"; then
+  if ! _trust_received_header "$by", "$prev_from"; then
+    trust="$prev_by"
+  fi
+fi
+
+if test -n "$trust"; then
+  printf "%s\n" "$trust"
   exit 1
-else
+elif test -n "$by"; then
   printf "%s\n" "$by"
   exit 0
 fi
