@@ -46,11 +46,30 @@ jq -n '[$ARGS.positional | _nwise(2) | {key: .[0], value: .[1]}]' --args -- "$@"
 
 Email is tough.
 
-When you try to extract recipients from mail headers, you will need to install
-some fatty RFC 5322 parsers or will end up with horribly wrong regex solutions.
+When you try to extract email addresses from mail headers, you will need to install
+some fatty RFC 5322 parsers or will end up with horribly wrong regexp solutions.
+
+For example, assume you are using `procmail(1)` to file spam mails by From header.
+You will come down to some simple procmail recipies like following:
+
+```procmail
+:0
+* ^From:.*spammer@example\.com
+$HOME/Maildir/.Junk/
+```
+
+Unfortunately, the above rule can't handle this valid email:
+
+```
+From: "John Doe" (\() <(I'm not)spammer@example.(and (this (is (nested (comment ;\))))))com>
+```
+
+The problem here is, email address syntax is somehow a context-free language
+just like HTML/XML and [it is simply wrong to use regexp](https://stackoverflow.com/a/590789/482519).
 
 Despite the importance of Email system (it's too universal, and therefore can be a major attack vector),
-there is no standard/promised/built-in/portable/easy-to-use/whatever ways, to do this simple task.
+we can't even determine which addresses are actually exist in mail headers without correct libraries.
+There really is no standard/promised/built-in/portable/easy-to-use/whatever ways to do this simple task.
 
 This awk script is my personal experiment to solve the problem without external tools/libraries.
 
