@@ -1,6 +1,9 @@
 #!/usr/bin/awk -f
 
 BEGIN {
+    "tty" | getline tty;
+    tty = tty == "not a tty" ? 0 : 1;
+
     Q = "\047";
     QQ = "\042";
     BS = "\134";
@@ -102,6 +105,14 @@ function optional(strnum) {
     return strnum;
 }
 
+function emphasize(str) {
+    if (tty) {
+        return "\033[31m" "\033[4m" str "\033[24m" "\033[0m";
+    }
+
+    return str;
+}
+
 function ltrim(str) {
     sub(/^[ \t\r\n]+/, "", str);
     return str;
@@ -155,11 +166,7 @@ function fatal(stash, _) {
 
         ebuf = "pos:" _["pos"] SP "[" field "]:" \
             substr(gbuf, 0, _["pos"]) \
-            "\033[31m" \
-            "\033[4m" \
-            substr(gbuf, _["pos"] + 1) \
-            "\033[24m" \
-            "\033[0m";
+            emphasize(substr(gbuf, _["pos"] + 1));
     }
 
     _clear(stash)
@@ -1882,11 +1889,7 @@ function main(nr, str, _) {
 
     if (!_["idx"]) { _["idx"] = length(str); }
     msg = "ERROR: line:" nr " pos:0 [(Malformed)]: " \
-        "\033[31m" \
-        "\033[4m" \
-        substr(str, 0, _["idx"]) \
-        "\033[24m" \
-        "\033[0m" \
+        emphasize(substr(str, 0, _["idx"])) \
         substr(str, _["idx"] + 1);
     diag(msg);
 
