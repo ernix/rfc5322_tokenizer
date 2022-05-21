@@ -53,9 +53,7 @@ BEGIN {
     buf = "";
     gbuf = "";
     obuf = "";
-    ebuf[0] = "";
-    ebuf[1] = "";
-    ebuf_flipflop = 0;
+    ebuf = "";
     error = 0;
     header_nr = 0;
 }
@@ -145,16 +143,33 @@ function markout(stash, anchor) {
     return 1;
 }
 
-function rollback(stash, _) {
-    _["buflen"] = length(gbuf);
-    _["pos"] = _["buflen"] - length(stash["buf"]);
-
-    ebuf[++ebuf_flipflop % 2] = "pos:" _["pos"] SP "[" field "]:" \
-        substr(gbuf, 0, _["pos"]) \
-        "\033[31m" substr(gbuf, _["pos"] + 1, _["buflen"]) "\033[0m";
-
+function _clear(stash) {
     buf = stash["buf"];
     obuf = stash["obuf"];
+    return 1;
+}
+
+function fatal(stash, _) {
+    if (ebuf == "") {
+        _["buflen"] = length(gbuf);
+        _["pos"] = _["buflen"] - length(stash["buf"]);
+
+        ebuf = "pos:" _["pos"] SP "[" field "]:" \
+            substr(gbuf, 0, _["pos"]) \
+            "\033[31m" \
+            "\033[4m" \
+            substr(gbuf, _["pos"] + 1, _["buflen"]) \
+            "\033[24m" \
+            "\033[0m";
+    }
+
+    _clear(stash)
+    return 1;
+}
+
+function fallback(stash) {
+    ebuf = "";
+    _clear(stash);
     return 1;
 }
 
@@ -204,7 +219,7 @@ function next_str(str, _) {
         }
     }
 
-    rollback(_);
+    fatal(_);
     return 0;
 }
 
@@ -218,7 +233,7 @@ function next_arr(array, _i, _) {
         }
     }
 
-    rollback(_);
+    fatal(_);
     return 0;
 }
 
@@ -232,7 +247,7 @@ function _consume_fws(_) {
 
     # wsp2 can be empty when crlf is not exists
     if (_["wsp1"] == "" && _["wsp2"] == "") {
-        rollback(_);
+        fatal(_);
         return 0;
     }
 
@@ -247,7 +262,7 @@ function _consume_obs_fws(_) {
     split("", _); markout(_);
 
     _["tmp"] = next_token_arr(arr_wsp);
-    if (_["tmp"] == "") { rollback(_); return 0; }
+    if (_["tmp"] == "") { fatal(_); return 0; }
 
     while (1) {
         _["crlf"] = next_str(CR LF);
@@ -255,7 +270,7 @@ function _consume_obs_fws(_) {
         _["tmp"] = _["tmp"] _["crlf"];
 
         _["wsp2"] = next_token_arr(arr_wsp);
-        if (_["wsp2"] == "") { rollback(_); return 0 }
+        if (_["wsp2"] == "") { fatal(_); return 0 }
         _["tmp"] = _["tmp"] _["wsp2"];
     }
 
@@ -267,7 +282,7 @@ function consume_fws(_) {
     split("", _); markout(_);
 
     _["fws"] = _consume_fws();
-    if (z(_["fws"])) { rollback(_); _["fws"] = _consume_obs_fws(); }
+    if (z(_["fws"])) { fallback(_); _["fws"] = _consume_obs_fws(); }
     if (z(_["fws"])) { _["fws"] = ""; }
 
     return _["fws"];
@@ -289,7 +304,7 @@ function _consume_quoted_pair(_) {
         }
     }
 
-    rollback(_);
+    fatal(_);
     return 0;
 }
 
@@ -312,7 +327,7 @@ function _consume_obs_qp(_) {
         if (!z(_["cr"])) { return _["tmp"] _["cr"]; }
     }
 
-    rollback(_);
+    fatal(_);
     return 0;
 }
 
@@ -321,8 +336,8 @@ function consume_quoted_pair(_) {
     split("", _); markout(_);
 
     _["tmp"] = _consume_quoted_pair();
-    if (z(_["tmp"])) { rollback(_); _["tmp"] = _consume_obs_qp(); }
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fallback(_); _["tmp"] = _consume_obs_qp(); }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -340,7 +355,7 @@ function consume_ccontent(_) {
     _["tmp"] = consume_comment();
     if (!z(_["tmp"])) { return _["tmp"]; }
 
-    rollback(_);
+    fatal(_);
     return 0;
 }
 
@@ -351,7 +366,7 @@ function consume_comment(_) {
     _["tmp"] = "";
 
     _["op_brace"] = next_str("(");
-    if (z(_["op_brace"])) { rollback(_); return 0; }
+    if (z(_["op_brace"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["op_brace"];
 
     _["comment"] = "";
@@ -370,7 +385,7 @@ function consume_comment(_) {
     _["tmp"] = _["tmp"] _["comment"];
 
     _["cl_brace"] = next_str(")");
-    if (z(_["cl_brace"])) { rollback(_); return 0; }
+    if (z(_["cl_brace"])) { fatal(_); return 0; }
 
     return _["tmp"] _["cl_brace"];
 }
@@ -401,7 +416,7 @@ function consume_cfws(_) {
         return _["tmp"];
     }
     else {
-        rollback(_);
+        fatal(_);
         return 0;
     }
 }
@@ -415,7 +430,7 @@ function _consume_day_of_week(_) {
     _["tmp"] = _["tmp"] optional(consume_fws());
 
     _["day_name"] = next_arr(arr_week);
-    if (z(_["day_name"])) { rollback(_); return 0; }
+    if (z(_["day_name"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["day_name"];
 
     stack("day-name", _["day_name"]);
@@ -431,7 +446,7 @@ function _consume_obs_day_of_week(_) {
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
     _["day_name"] = next_arr(arr_week);
-    if (z(_["day_name"])) { rollback(_); return 0; }
+    if (z(_["day_name"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["day_name"];
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
@@ -445,8 +460,8 @@ function consume_day_of_week(_) {
     split("", _); markout(_);
 
     _["dow"] = _consume_day_of_week();
-    if (z(_["dow"])) { rollback(_); _["dow"] = _consume_obs_day_of_week(); }
-    if (z(_["dow"])) { rollback(_); return 0; }
+    if (z(_["dow"])) { fallback(_); _["dow"] = _consume_obs_day_of_week(); }
+    if (z(_["dow"])) { fatal(_); return 0; }
 
     return _["dow"];
 }
@@ -461,12 +476,12 @@ function _consume_day(_) {
 
     _["digit"] = next_token_arr(arr_digit);
     _["len"] = length(_["digit"]);
-    if (_["len"] < 1) { rollback(_); return 0; }
-    if (_["len"] > 2) { rollback(_); return 0; }
+    if (_["len"] < 1) { fatal(_); return 0; }
+    if (_["len"] > 2) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["digit"];
 
     _["fws"] = consume_fws();
-    if (z(_["fws"])) { rollback(_); return 0; }
+    if (z(_["fws"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["fws"];
 
     stack("day", _["digit"]);
@@ -483,8 +498,8 @@ function _consume_obs_day(_) {
 
     _["digit"] = next_token_arr(arr_digit);
     _["len"] = length(_["digit"]);
-    if (_["len"] < 1) { rollback(_); return 0; }
-    if (_["len"] > 2) { rollback(_); return 0; }
+    if (_["len"] < 1) { fatal(_); return 0; }
+    if (_["len"] > 2) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["digit"];
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
@@ -498,8 +513,8 @@ function consume_day(_) {
     split("", _); markout(_);
 
     _["day"] = _consume_day();
-    if (z(_["day"])) { rollback(_); _["day"] = _consume_obs_day(); }
-    if (z(_["day"])) { rollback(_); return 0; }
+    if (z(_["day"])) { fallback(_); _["day"] = _consume_obs_day(); }
+    if (z(_["day"])) { fatal(_); return 0; }
 
     return _["day"];
 }
@@ -511,7 +526,7 @@ function consume_month(_) {
     split("", _); markout(_);
 
     _["tmp"] = next_arr(arr_month);
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     stack("month", _["tmp"]);
     return _["tmp"];
@@ -524,15 +539,15 @@ function _consume_year(_) {
     _["tmp"] = "";
 
     _["fws"] = consume_fws();
-    if (z(_["fws"])) { rollback(_); return 0; }
+    if (z(_["fws"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["fws"];
 
     _["year"] = next_token_arr(arr_digit);
-    if (length(_["year"]) < 4 ) { rollback(_); return 0; }
+    if (length(_["year"]) < 4 ) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["year"];
 
     _["fws"] = consume_fws();
-    if (z(_["fws"])) { rollback(_); return 0; }
+    if (z(_["fws"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["fws"];
 
     stack("year", _["year"]);
@@ -548,7 +563,7 @@ function _consume_obs_year(_) {
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
     _["year"] = next_token_arr(arr_digit);
-    if (length(_["year"]) < 2) { rollback(_); return 0; }
+    if (length(_["year"]) < 2) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["year"];
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
@@ -562,8 +577,8 @@ function consume_year(_) {
     split("", _); markout(_);
 
     _["year"] = _consume_year();
-    if (z(_["year"])) { rollback(_); _["year"] = _consume_obs_year(); }
-    if (z(_["year"])) { rollback(_); return 0; }
+    if (z(_["year"])) { fallback(_); _["year"] = _consume_obs_year(); }
+    if (z(_["year"])) { fatal(_); return 0; }
 
     return _["year"];
 }
@@ -575,15 +590,15 @@ function consume_date(_) {
     _["tmp"] = "";
 
     _["day"] = consume_day();
-    if (z(_["day"])) { rollback(_); return 0; }
+    if (z(_["day"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["day"];
 
     _["month"] = consume_month();
-    if (z(_["month"])) { rollback(_); return 0; }
+    if (z(_["month"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["month"];
 
     _["year"] = consume_year();
-    if (z(_["year"])) { rollback(_); return 0; }
+    if (z(_["year"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["year"];
 
     return _["tmp"];
@@ -594,7 +609,7 @@ function _consume_hour(_) {
     split("", _); markout(_);
 
     _["hour"] = next_token_arr(arr_digit);
-    if (length(_["hour"]) != 2) { rollback(_); return 0; }
+    if (length(_["hour"]) != 2) { fatal(_); return 0; }
 
     stack("hour", _["hour"]);
     return _["hour"];
@@ -609,7 +624,7 @@ function _consume_obs_hour(_) {
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
     _["hour"] = next_token_arr(arr_digit);
-    if (length(_["hour"]) != 2) { rollback(_); return 0; }
+    if (length(_["hour"]) != 2) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["hour"];
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
@@ -623,8 +638,8 @@ function consume_hour(_) {
     split("", _); markout(_);
 
     _["hour"] = _consume_hour();
-    if (z(_["hour"])) { rollback(_); _["hour"] = _consume_obs_hour(); }
-    if (z(_["hour"])) { rollback(_); return 0; }
+    if (z(_["hour"])) { fallback(_); _["hour"] = _consume_obs_hour(); }
+    if (z(_["hour"])) { fatal(_); return 0; }
 
     return _["hour"];
 }
@@ -634,7 +649,7 @@ function _consume_minute(_) {
     split("", _); markout(_);
 
     _["minute"] = next_token_arr(arr_digit);
-    if (length(_["minute"]) != 2) { rollback(_); return 0; }
+    if (length(_["minute"]) != 2) { fatal(_); return 0; }
 
     stack("minute", _["minute"]);
     return _["minute"];
@@ -649,7 +664,7 @@ function _consume_obs_minute(_) {
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
     _["minute"] = next_token_arr(arr_digit);
-    if (length(_["minute"]) != 2) { rollback(_); return 0; }
+    if (length(_["minute"]) != 2) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["minute"];
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
@@ -663,8 +678,8 @@ function consume_minute(_) {
     split("", _); markout(_);
 
     _["minute"] = _consume_minute();
-    if (z(_["minute"])) { rollback(_); _["minute"] = _consume_obs_minute(); }
-    if (z(_["minute"])) { rollback(_); return 0; }
+    if (z(_["minute"])) { fallback(_); _["minute"] = _consume_obs_minute(); }
+    if (z(_["minute"])) { fatal(_); return 0; }
 
     return _["minute"];
 }
@@ -674,7 +689,7 @@ function _consume_second(_) {
     split("", _); markout(_);
 
     _["second"] = next_token_arr(arr_digit);
-    if (length(_["second"]) != 2) { rollback(_); return 0; }
+    if (length(_["second"]) != 2) { fatal(_); return 0; }
 
     stack("second", _["second"]);
     return _["second"];
@@ -689,7 +704,7 @@ function _consume_obs_second(_) {
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
     _["minute"] = next_token_arr(arr_digit);
-    if (length(_["minute"]) != 2) { rollback(_); return 0; }
+    if (length(_["minute"]) != 2) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["minute"];
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
@@ -703,8 +718,8 @@ function consume_second(_) {
     split("", _); markout(_);
 
     _["second"] = _consume_second();
-    if (z(_["second"])) { rollback(_); _["second"] = _consume_obs_second(); }
-    if (z(_["second"])) { rollback(_); return 0; }
+    if (z(_["second"])) { fallback(_); _["second"] = _consume_obs_second(); }
+    if (z(_["second"])) { fatal(_); return 0; }
 
     return _["second"];
 }
@@ -716,16 +731,16 @@ function _consume_zone(_) {
     _["tmp"] = "";
 
     _["fws"] = consume_fws();
-    if (z(_["fws"])) { rollback(_); return 0; }
+    if (z(_["fws"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["fws"];
 
     _["sign"] = next_str("+");
     if (z(_["sign"])) { _["sign"] = next_str("-"); }
-    if (z(_["sign"])) { rollback(_); return 0; }
+    if (z(_["sign"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["sign"];
 
     _["digit"] = next_token_arr(arr_digit);
-    if (length(_["digit"]) != 4) { rollback(_); return 0; }
+    if (length(_["digit"]) != 4) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["digit"];
 
     stack("zone", _["sign"] _["digit"]);
@@ -749,7 +764,7 @@ function _consume_obs_zone(_) {
     _["tmp"] = _["tmp"] optional(consume_fws());
 
     _["zone"] = next_arr(arr_obs_zone);
-    if (z(_["zone"])) { rollback(_); return 0; }
+    if (z(_["zone"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["zone"];
 
     stack("obs-zone", _["zone"]);
@@ -761,8 +776,8 @@ function consume_zone(_) {
     split("", _); markout(_);
 
     _["tmp"] = _consume_zone();
-    if (z(_["tmp"])) { rollback(_); _["tmp"] = _consume_obs_zone(); }
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fallback(_); _["tmp"] = _consume_obs_zone(); }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -774,15 +789,15 @@ function consume_time_of_day(_) {
     _["tmp"] = "";
 
     _["hour"] = consume_hour();
-    if (z(_["hour"])) { rollback(_); return 0; }
+    if (z(_["hour"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["hour"];
 
     _["colon"] = next_str(":");
-    if (z(_["colon"])) { rollback(_); return 0; }
+    if (z(_["colon"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["colon"];
 
     _["minute"] = consume_minute();
-    if (z(_["minute"])) { rollback(_); return 0; }
+    if (z(_["minute"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["minute"];
 
     _["colon"] = next_str(":");
@@ -790,7 +805,7 @@ function consume_time_of_day(_) {
     _["tmp"] = _["tmp"] _["colon"];
 
     _["second"] = consume_second();
-    if (z(_["second"])) { rollback(_); return 0; }
+    if (z(_["second"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["second"];
 
     return _["tmp"];
@@ -803,11 +818,11 @@ function consume_time(_) {
     _["tmp"] = "";
 
     _["tod"] = consume_time_of_day();
-    if (z(_["tod"])) { rollback(_); return 0; }
+    if (z(_["tod"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["tod"];
 
     _["zone"] = consume_zone();
-    if (z(_["zone"])) { rollback(_); return 0 }
+    if (z(_["zone"])) { fatal(_); return 0 }
     _["tmp"] = _["tmp"] _["zone"];
 
     return _["tmp"];
@@ -823,16 +838,16 @@ function consume_date_time(_) {
     _["comma"] = "";
     if (!z(_["dow"])) {
         _["comma"] = next_str(",");
-        if (z(_["comma"])) { rollback(_); return 0; }
+        if (z(_["comma"])) { fatal(_); return 0; }
     }
     _["tmp"] = _["tmp"] _["dow"] _["comma"];
 
     _["date"] = consume_date();
-    if (z(_["date"])) { rollback(_); return 0; }
+    if (z(_["date"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["date"];
 
     _["time"] = consume_time();
-    if (z(_["time"])) { rollback(_); return 0; }
+    if (z(_["time"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["time"];
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
@@ -848,7 +863,7 @@ function _consume_mailbox_list(_) {
 
     while (1) {
         _["mbox"] = consume_mailbox();
-        if (z(_["mbox"])) { rollback(_); return 0; }
+        if (z(_["mbox"])) { fatal(_); return 0; }
         _["tmp"] = _["tmp"] _["mbox"];
 
         _["comma"] = next_str(",");
@@ -874,7 +889,7 @@ function _consume_obs_mbox_list(_) {
     }
 
     _["mbox"] = consume_mailbox();
-    if (z(_["mbox"])) { rollback(_); return 0; }
+    if (z(_["mbox"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["mbox"];
 
     while (1) {
@@ -899,8 +914,8 @@ function consume_mailbox_list(_) {
     split("", _); markout(_);
 
     _["tmp"] = _consume_mailbox_list();
-    if (z(_["tmp"])) { rollback(_); _["tmp"] = _consume_obs_mbox_list(); }
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fallback(_); _["tmp"] = _consume_obs_mbox_list(); }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -914,7 +929,7 @@ function consume_atom(_) {
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
     _["atom"] = next_token(atext);
-    if (_["atom"] == "") { rollback(_); return 0; }
+    if (_["atom"] == "") { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["atom"];
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
@@ -927,8 +942,8 @@ function consume_qcontent(_) {
     split("", _); markout(_);
 
     _["tmp"] = next_token(qtext);
-    if (_["tmp"] == "") { rollback(_); _["tmp"] = consume_quoted_pair(); }
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (_["tmp"] == "") { fallback(_); _["tmp"] = consume_quoted_pair(); }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -944,7 +959,7 @@ function consume_quoted_string(_) {
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
     _["DQUOTE"] = next_str(QQ);
-    if (z(_["DQUOTE"])) { rollback(_); return 0; }
+    if (z(_["DQUOTE"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["DQUOTE"];
 
     while (1) {
@@ -958,7 +973,7 @@ function consume_quoted_string(_) {
     _["tmp"] = _["tmp"] optional(consume_fws());
 
     _["DQUOTE"] = next_str(QQ);
-    if (z(_["DQUOTE"])) { rollback(_); return 0; }
+    if (z(_["DQUOTE"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["DQUOTE"];
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
@@ -971,8 +986,8 @@ function consume_word(_) {
     split("", _); markout(_);
 
     _["tmp"] = consume_atom();
-    if (z(_["tmp"])) { rollback(_); _["tmp"] = consume_quoted_string(); }
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fallback(_); _["tmp"] = consume_quoted_string(); }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -989,7 +1004,7 @@ function _consume_phrase(_) {
         _["tmp"] = _["tmp"] _["word"];
     }
 
-    if (!_["tmp"]) { rollback(_); return 0; }
+    if (!_["tmp"]) { fatal(_); return 0; }
 
     stack("phrase", _["tmp"]);
     return _["tmp"];
@@ -1000,7 +1015,7 @@ function _consume_obs_phrase(_) {
     split("", _); markout(_);
 
     _["tmp"] = consume_word();
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     while (1) {
         _["rest"] = consume_word();
@@ -1033,8 +1048,8 @@ function consume_phrase(_) {
     split("", _); markout(_);
 
     _["tmp"] = _consume_phrase();
-    if (z(_["tmp"])) { rollback(_); _["tmp"] = _consume_obs_phrase(); }
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fallback(_); _["tmp"] = _consume_obs_phrase(); }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -1044,7 +1059,7 @@ function consume_display_name(_) {
     split("", _); markout(_);
 
     _["tmp"] = consume_phrase();
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -1058,15 +1073,15 @@ function _consume_angle_addr(_) {
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
     _["op_angle"] = next_str("<");
-    if (z(_["op_angle"])) { rollback(_); return 0; }
+    if (z(_["op_angle"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["op_angle"];
 
     _["addr_spec"] = consume_addr_spec();
-    if (z(_["addr_spec"])) { rollback(_); return 0; }
+    if (z(_["addr_spec"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["addr_spec"];
 
     _["cl_angle"] = next_str(">");
-    if (z(_["cl_angle"])) { rollback(_); return 0; }
+    if (z(_["cl_angle"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["cl_angle"];
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
@@ -1090,11 +1105,11 @@ function consume_obs_domain_list(_) {
     }
 
     _["at"] = next_str("@");
-    if (!z(_["at"])) { rollback(_); return 0; }
+    if (!z(_["at"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["at"];
 
     _["domain"] = consume_domain();
-    if (!z(_["domain"])) { rollback(_); return 0; }
+    if (!z(_["domain"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["domain"];
 
     while (1) {
@@ -1109,7 +1124,7 @@ function consume_obs_domain_list(_) {
         _["tmp"] = _["tmp"] _["at"];
 
         _["domain"] = consume_domain();
-        if (z(_["domain"])) { rollback(_); return 0; }
+        if (z(_["domain"])) { fatal(_); return 0; }
         _["tmp"] = _["tmp"] _["domain"];
     }
 
@@ -1123,11 +1138,11 @@ function consume_obs_route(_) {
     _["tmp"] = "";
 
     _["obs_domain_list"] = consume_obs_domain_list();
-    if (z(_["obs_domain_list"])) { rollback(_); return 0; }
+    if (z(_["obs_domain_list"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["obs_domain_list"];
 
     _["colon"] = next_str(":");
-    if (z(_["colon"])) { rollback(_); return 0; }
+    if (z(_["colon"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["colon"];
 
     return _["tmp"];
@@ -1142,19 +1157,19 @@ function _consume_obs_angle_addr(_) {
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
     _["op_angle"] = next_str("<");
-    if (z(_["op_angle"])) { rollback(_); return 0; }
+    if (z(_["op_angle"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["op_angle"];
 
     _["obs_route"] = consume_obs_route();
-    if (z(_["obs_route"])) { rollback(_); return 0; }
+    if (z(_["obs_route"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["obs_route"];
 
     _["addr_spec"] = consume_addr_spec();
-    if (z(_["addr_spec"])) { rollback(_); return 0; }
+    if (z(_["addr_spec"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["addr_spec"];
 
     _["cl_angle"] = next_str(">");
-    if (z(_["cl_angle"])) { rollback(_); return 0; }
+    if (z(_["cl_angle"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["cl_angle"];
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
@@ -1169,8 +1184,8 @@ function consume_angle_addr(_) {
     split("", _); markout(_);
 
     _["tmp"] = _consume_angle_addr();
-    if (z(_["tmp"])) { rollback(_); _["tmp"] = _consume_obs_angle_addr(); }
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fallback(_); _["tmp"] = _consume_obs_angle_addr(); }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -1184,7 +1199,7 @@ function consume_name_addr(_) {
     _["tmp"] = _["tmp"] optional(consume_display_name());
 
     _["angle_addr"] = consume_angle_addr();
-    if(z(_["angle_addr"])) { rollback(_); return 0; }
+    if(z(_["angle_addr"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["angle_addr"];
 
     return _["tmp"];
@@ -1195,7 +1210,7 @@ function consume_dot_atom_text(_) {
     split("", _); markout(_);
 
     _["tmp"] = next_token(atext);
-    if (_["tmp"] == "") { rollback(_); return 0; }
+    if (_["tmp"] == "") { fatal(_); return 0; }
 
     while (1) {
         _["dot"] = next_str(".");
@@ -1203,7 +1218,7 @@ function consume_dot_atom_text(_) {
         _["tmp"] = _["tmp"] _["dot"];
 
         _["atext"] = next_token(atext);
-        if (_["atext"] == "") { rollback(_); return 0; }
+        if (_["atext"] == "") { fatal(_); return 0; }
         _["tmp"] = _["tmp"] _["atext"];
     }
 
@@ -1219,7 +1234,7 @@ function consume_dot_atom(_) {
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
     _["dot_atom_text"] = consume_dot_atom_text();
-    if (z(_["dot_atom_text"])) { rollback(_); return 0; }
+    if (z(_["dot_atom_text"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["dot_atom_text"];
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
@@ -1232,7 +1247,7 @@ function consume_obs_local_part(_) {
     split("", _); markout(_);
 
     _["tmp"] = consume_word();
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     while (1) {
         _["dot"] = next_str(".");
@@ -1240,7 +1255,7 @@ function consume_obs_local_part(_) {
         _["tmp"] = _["tmp"] _["dot"];
 
         _["word"] = consume_word();
-        if (z(_["word"])) { rollback(_); return 0; }
+        if (z(_["word"])) { fatal(_); return 0; }
         _["tmp"] = _["tmp"] _["word"];
     }
 
@@ -1254,18 +1269,17 @@ function consume_local_part(_) {
     _["tmp"] = consume_dot_atom();
     if (!z(_["tmp"])) { return _["tmp"]; }
 
-    rollback(_);
+    fallback(_);
 
     _["tmp"] = consume_quoted_string();
     if (!z(_["tmp"])) { return _["tmp"]; }
 
-    rollback(_);
+    fallback(_);
 
     _["tmp"] = consume_obs_local_part();
     if (!z(_["tmp"])) { return _["tmp"]; }
 
-    rollback(_);
-
+    fatal(_);
     return 0;
 }
 
@@ -1274,7 +1288,7 @@ function _consume_dtext(_) {
     split("", _); markout(_);
 
     _["tmp"] = next_token(dtext);
-    if (_["tmp"] == "") { rollback(_); return 0; }
+    if (_["tmp"] == "") { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -1284,8 +1298,8 @@ function _consume_obs_dtext(_) {
     split("", _); markout(_);
 
     _["tmp"] = next_arr(arr_obs_no_ws_ctl);
-    if (z(_["tmp"])) { rollback(_); _["tmp"] = consume_quoted_pair(); }
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fallback(_); _["tmp"] = consume_quoted_pair(); }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -1297,8 +1311,8 @@ function consume_dtext(_) {
     split("", _); markout(_);
 
     _["tmp"] = _consume_dtext();
-    if (z(_["tmp"])) { rollback(_); _["tmp"] = _consume_obs_dtext(); }
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fallback(_); _["tmp"] = _consume_obs_dtext(); }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -1312,7 +1326,7 @@ function consume_domain_literal(_) {
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
     _["op_bracket"] = next_str("[");
-    if (z(_["op_bracket"])) { rollback(_); return 0; }
+    if (z(_["op_bracket"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["op_bracket"];
 
     while (1) {
@@ -1326,7 +1340,7 @@ function consume_domain_literal(_) {
     _["tmp"] = _["tmp"] optional(consume_fws());
 
     _["cl_bracket"] = next_str("]");
-    if (z(_["cl_bracket"])) { rollback(_); return 0; }
+    if (z(_["cl_bracket"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["cl_bracket"];
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
@@ -1339,7 +1353,7 @@ function consume_obs_domain(_) {
     split("", _); markout(_);
 
     _["tmp"] = consume_atom();
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     while (1) {
         _["dot"] = next_str(".");
@@ -1347,7 +1361,7 @@ function consume_obs_domain(_) {
         _["tmp"] = _["tmp"] _["dot"];
 
         _["atom"] = consume_atom();
-        if (z(_["atom"])) { rollback(_); return 0; }
+        if (z(_["atom"])) { fatal(_); return 0; }
         _["tmp"] = _["tmp"] _["atom"];
     }
 
@@ -1361,18 +1375,17 @@ function consume_domain(_) {
     _["tmp"] = consume_dot_atom();
     if (!z(_["tmp"])) { return _["tmp"]; }
 
-    rollback(_);
+    fallback(_);
 
     _["tmp"] = consume_domain_literal();
     if (!z(_["tmp"])) { return _["tmp"]; }
 
-    rollback(_);
+    fallback(_);
 
     _["tmp"] = consume_obs_domain();
     if (!z(_["tmp"])) { return _["tmp"]; }
 
-    rollback(_);
-
+    fatal(_);
     return 0;
 }
 
@@ -1383,15 +1396,15 @@ function consume_addr_spec(_) {
     _["tmp"] = "";
 
     _["local_part"] = consume_local_part();
-    if (z(_["local_part"])) { rollback(_); return 0; }
+    if (z(_["local_part"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["local_part"];
 
     _["at"] = next_str("@");
-    if (z(_["at"])) { rollback(_); return 0; }
+    if (z(_["at"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["at"];
 
     _["domain"] = consume_domain();
-    if (z(_["domain"])) { rollback(_); return 0; }
+    if (z(_["domain"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["domain"];
 
     stack("addr-spec", _["tmp"]);
@@ -1403,8 +1416,8 @@ function consume_mailbox(_) {
     split("", _); markout(_, "mailbox");
 
     _["tmp"] = consume_name_addr();
-    if (z(_["tmp"])) { rollback(_); _["tmp"] = consume_addr_spec(); }
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fallback(_); _["tmp"] = consume_addr_spec(); }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -1426,7 +1439,7 @@ function consume_obs_group_list(_) {
         _["seen"]++;
     }
 
-    if (!_["seen"]) { rollback(_); return 0; }
+    if (!_["seen"]) { fatal(_); return 0; }
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
@@ -1440,13 +1453,17 @@ function consume_group_list(_) {
     _["tmp"] = consume_mailbox_list();
     if (!z(_["tmp"])) { return _["tmp"]; }
 
+    fallback(_)
+
     _["tmp"] = consume_cfws();
     if (!z(_["tmp"])) { return _["tmp"]; }
+
+    fallback(_)
 
     _["tmp"] = consume_obs_group_list();
     if (!z(_["tmp"])) { return _["tmp"]; }
 
-    rollback(_);
+    fatal(_);
     return 0;
 }
 
@@ -1457,17 +1474,17 @@ function consume_group(_) {
     _["tmp"] = "";
 
     _["display_name"] = consume_display_name();
-    if (z(_["display_name"])) { rollback(_); return 0; }
+    if (z(_["display_name"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["display_name"];
 
     _["colon"] = next_str(":");
-    if (z(_["colon"])) { rollback(_); return 0; }
+    if (z(_["colon"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["colon"];
 
     _["tmp"] = _["tmp"] optional(consume_group_list());
 
     _["semicolon"] = next_str(";");
-    if (z(_["semicolon"])) { rollback(_); return 0; }
+    if (z(_["semicolon"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["semicolon"];
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
@@ -1480,8 +1497,8 @@ function consume_address(_) {
     split("", _); markout(_);
 
     _["tmp"] = consume_mailbox();
-    if (z(_["tmp"])) { rollback(_); _["tmp"] = consume_group(); }
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fallback(_); _["tmp"] = consume_group(); }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -1491,7 +1508,7 @@ function _consume_address_list(_) {
     split("", _); markout(_);
 
     _["tmp"] = consume_address();
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     while (1) {
         _["comma"] = next_str(",");
@@ -1499,7 +1516,7 @@ function _consume_address_list(_) {
         _["tmp"] = _["tmp"] _["comma"];
 
         _["addr"] = consume_address();
-        if (z(_["addr"])) { rollback(_); return 0; }
+        if (z(_["addr"])) { fatal(_); return 0; }
         _["tmp"] = _["tmp"] _["addr"];
     }
 
@@ -1521,7 +1538,7 @@ function _consume_obs_addr_list(_) {
     }
 
     _["addr"] = consume_address();
-    if (z(_["addr"])) { rollback(_); return 0; }
+    if (z(_["addr"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["addr"];
 
     while (1) {
@@ -1545,8 +1562,8 @@ function consume_address_list(_) {
     split("", _); markout(_);
 
     _["tmp"] = _consume_address_list();
-    if (z(_["tmp"])) { rollback(_); _["tmp"] = _consume_obs_addr_list(); }
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fallback(_); _["tmp"] = _consume_obs_addr_list(); }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -1556,8 +1573,8 @@ function consume_bcc(_) {
     split("", _); markout(_);
 
     _["tmp"] = consume_address_list();
-    if (z(_["tmp"])) { rollback(_); _["tmp"] = consume_cfws(); }
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fallback(_); _["tmp"] = consume_cfws(); }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -1567,7 +1584,7 @@ function _consume_obs_id_left(_) {
     split("", _); markout(_);
 
     _["tmp"] = consume_local_part();
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -1577,8 +1594,8 @@ function consume_id_left(_) {
     split("", _); markout(_);
 
     _["tmp"] = consume_dot_atom_text();
-    if (z(_["tmp"])) { rollback(_); _["tmp"] = _consume_obs_id_left(); }
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fallback(_); _["tmp"] = _consume_obs_id_left(); }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -1590,13 +1607,13 @@ function consume_no_fold_literal(_) {
     _["tmp"] = "";
 
     _["op_bracket"] = next_str("[");
-    if (z(_["op_bracket"])) { rollback(_); return 0; }
+    if (z(_["op_bracket"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["op_bracket"];
 
     _["tmp"] = _["tmp"] next_token(dtext);
 
     _["cl_bracket"] = next_str("]");
-    if (z(_["cl_bracket"])) { rollback(_); return 0; }
+    if (z(_["cl_bracket"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["cl_bracket"];
 
     return _["tmp"];
@@ -1607,7 +1624,7 @@ function _consume_obs_id_right(_) {
     split("", _); markout(_);
 
     _["tmp"] = consume_domain();
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -1617,9 +1634,9 @@ function consume_id_right(_) {
     split("", _); markout(_);
 
     _["tmp"] = consume_dot_atom_text();
-    if (z(_["tmp"])) { rollback(_); _["tmp"] = consume_no_fold_literal(); }
-    if (z(_["tmp"])) { rollback(_); _["tmp"] = _consume_obs_id_right(); }
-    if (z(_["tmp"])) { rollback(_); return 0; }
+    if (z(_["tmp"])) { fallback(_); _["tmp"] = consume_no_fold_literal(); }
+    if (z(_["tmp"])) { fallback(_); _["tmp"] = _consume_obs_id_right(); }
+    if (z(_["tmp"])) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -1633,23 +1650,23 @@ function consume_msg_id(_) {
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
     _["op_angle"] = next_str("<");
-    if (z(_["op_angle"])) { rollback(_); return 0; }
+    if (z(_["op_angle"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["op_angle"];
 
     _["id_left"] = consume_id_left();
-    if (z(_["id_left"])) { rollback(_); return 0; }
+    if (z(_["id_left"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["id_left"];
 
     _["at"] = next_str("@");
-    if (z(_["at"])) { rollback(_); return 0; }
+    if (z(_["at"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["at"];
 
     _["id_right"] = consume_id_right();
-    if (z(_["id_right"])) { rollback(_); return 0; }
+    if (z(_["id_right"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["id_right"];
 
     _["cl_angle"] = next_str(">");
-    if (z(_["cl_angle"])) { rollback(_); return 0; }
+    if (z(_["cl_angle"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["cl_angle"];
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
@@ -1675,7 +1692,7 @@ function consume_references(_) {
         _["seen"]++;
     }
 
-    if (!_["seen"]) { rollback(_); return 0; }
+    if (!_["seen"]) { fatal(_); return 0; }
 
     return _["tmp"];
 }
@@ -1687,20 +1704,20 @@ function consume_path(_) {
     _["angle_addr"] = consume_angle_addr();
     if (!z(_["angle_addr"])) { return _["angle_addr"]; }
 
-    rollback(_);
+    fallback(_);
 
     _["tmp"] = "";
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
     _["op_angle"] = next_str("<");
-    if (z(_["op_angle"])) { rollback(_); return 0; }
+    if (z(_["op_angle"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["op_angle"];
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
     _["cl_angle"] = next_str(">");
-    if (z(_["cl_angle"])) { rollback(_); return 0; }
+    if (z(_["cl_angle"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["cl_angle"];
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
@@ -1715,12 +1732,12 @@ function consume_received_token(_) {
     _["angle_addr"] = consume_angle_addr();
     if (!z(_["angle_addr"])) { return _["angle_addr"]; }
 
-    rollback(_);
+    fallback(_);
 
     _["addr_spec"] = consume_addr_spec();
     if (!z(_["addr_spec"])) { return _["addr_spec"]; }
 
-    rollback(_);
+    fallback(_);
 
     _["domain"] = consume_domain();
     if (!z(_["domain"])) {
@@ -1733,7 +1750,7 @@ function consume_received_token(_) {
         }
     }
 
-    rollback(_);
+    fallback(_);
 
     _["word"] = consume_word();
     if (!z(_["word"])) {
@@ -1741,7 +1758,7 @@ function consume_received_token(_) {
         return _["word"];
     }
 
-    rollback(_);
+    fatal(_);
     return 0;
 }
 
@@ -1766,11 +1783,11 @@ function consume_received(_) {
     }
 
     _["semicolon"] = next_str(";");
-    if (z(_["semicolon"])) { rollback(_); return 0; }
+    if (z(_["semicolon"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["semicolon"];
 
     _["date_time"] = consume_date_time();
-    if (z(_["date_time"])) { rollback(_); return 0; }
+    if (z(_["date_time"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["date_time"];
 
     return _["tmp"];
@@ -1784,7 +1801,7 @@ function consume_keywords(_) {
 
     while (1) {
         _["phrase"] = consume_phrase();
-        if (z(_["phrase"])) { rollback(_); return 0; }
+        if (z(_["phrase"])) { fatal(_); return 0; }
         _["tmp"] = _["tmp"] _["phrase"];
 
         _["comma"] = next_str(",");
@@ -1821,8 +1838,7 @@ function consume(nr, _) {
     else { _["success"] = 1; } # unknown header
 
     if (!_["success"]) {
-        # the last but one rollback history
-        diag("ERROR: line:" nr SP ebuf[(ebuf_flipflop + 1) % 2]);
+        diag("ERROR: line:" nr SP ebuf);
         error = 1;
     }
 

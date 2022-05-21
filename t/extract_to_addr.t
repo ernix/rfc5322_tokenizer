@@ -70,7 +70,9 @@ my %tests = (
         jdoe@one.test
     )],
     'rfc5322_appendix_a_6_1.mbox' => undef(),
-    'rfc5322_appendix_a_6_2.mbox' => undef(),
+    'rfc5322_appendix_a_6_2.mbox' => [qw(
+        mary@example.net
+    )],
     'rfc5322_appendix_a_6_3.mbox' => undef(),
 );
 
