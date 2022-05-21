@@ -50,7 +50,7 @@ When you try to extract email addresses from mail headers, you will need to inst
 some fatty RFC 5322 parsers or will end up with horribly wrong regexp solutions.
 
 For example, assume you are using `procmail(1)` to file spam mails by From header.
-You will come down to some simple procmail recipies like following:
+You will come down to some simple procmail recipes like following:
 
 ```procmail
 :0
