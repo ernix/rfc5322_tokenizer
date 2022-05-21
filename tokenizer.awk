@@ -151,14 +151,13 @@ function _clear(stash) {
 
 function fatal(stash, _) {
     if (ebuf == "") {
-        _["buflen"] = length(gbuf);
-        _["pos"] = _["buflen"] - length(stash["buf"]);
+        _["pos"] = length(gbuf) - length(stash["buf"]);
 
         ebuf = "pos:" _["pos"] SP "[" field "]:" \
             substr(gbuf, 0, _["pos"]) \
             "\033[31m" \
             "\033[4m" \
-            substr(gbuf, _["pos"] + 1, _["buflen"]) \
+            substr(gbuf, _["pos"] + 1) \
             "\033[24m" \
             "\033[0m";
     }
@@ -178,7 +177,7 @@ function next_token(chars, _) {
     for (_["pos"] = 0; _["pos"]++ < _["len"];) {
         if (index(chars, substr(buf, _["pos"], 1)) < 1) {
             _["tmp"] = substr(buf, 0, _["pos"] - 1);
-            buf = substr(buf, _["pos"], _["len"]);
+            buf = substr(buf, _["pos"]);
             return _["tmp"];
         }
     }
@@ -209,12 +208,11 @@ function next_token_arr(array, _i, _) {
 function next_str(str, _) {
     split("", _); markout(_);
 
-    _["len"] = length(buf);
     _["str_len"] = length(str);
-    if (_["len"] >= _["str_len"] && _["str_len"] > 0) {
+    if (length(buf) >= _["str_len"] && _["str_len"] > 0) {
         _["pre"] = substr(buf, 0, _["str_len"]);
         if (_["pre"] == str) {
-            buf = substr(buf, _["str_len"] + 1, _["len"]);
+            buf = substr(buf, _["str_len"] + 1);
             return _["pre"];
         }
     }
@@ -1876,13 +1874,22 @@ function main(nr, str, _) {
         if (within(field, ftext)) {
             stack("field-name", field);
             flush();
-            buf = substr(str, _["idx"] + 1, length(str));
+            buf = substr(str, _["idx"] + 1);
             header_nr = nr;
             return 1;
         }
     }
 
-    diag("ERROR: line:" nr " Malformed header: " str);
+    if (!_["idx"]) { _["idx"] = length(str); }
+    msg = "ERROR: line:" nr " pos:0 [(Malformed)]: " \
+        "\033[31m" \
+        "\033[4m" \
+        substr(str, 0, _["idx"]) \
+        "\033[24m" \
+        "\033[0m" \
+        substr(str, _["idx"] + 1);
+    diag(msg);
+
     field = "";
     buf = "";
     error = 1;
