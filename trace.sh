@@ -58,7 +58,7 @@ while test $# -gt 0; do
       prev_by="$by"
       by="$value"
       ;;
-    Received:*)
+    Received:*:word)
       case $value in
         from|by|via|with|id|for)
           # In fact, RFC 5321 specifies strict token order in trace info,
@@ -70,6 +70,8 @@ while test $# -gt 0; do
         *)
           ;;
       esac
+      ;;
+    Received:*)
       ;;
     *)
       prep=
