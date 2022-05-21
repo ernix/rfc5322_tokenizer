@@ -3,13 +3,13 @@ Pure POSIX-compliant RFC 5322 tokenizer
 
 # SYNOPSIS
 
-~~~
+```
 $ awk --posix -f ./tokenizer.awk path/to/some.mbox
 
 $ sh -c 'eval "set -- $1"; printf %s\\t%s\\n "$@"' -- \
     "$(<path/to/some.mbox formail -c -X To: | awk --posix -f ./tokenizer.awk)" \
     | awk '$1 == "addr-spec" { print $2; }'
-~~~
+```
 
 The `-c` option of `formail(1)` here is important, because tokens may contain any
 ASCII control characters. (even NUL, see `obs-utext` in RFC[^1])
@@ -27,7 +27,7 @@ You still can loop over tokens safely without formail. See `example.sh` for more
 Each elements are flattened key/value pairs, you can convert each tokens in JSON
 format if you have access to JSON encoder/decoder such as `jq(1)`:
 
-~~~sh
+```sh
 #!/bin/sh
 
 # Convert tokens to JSON
@@ -40,7 +40,7 @@ eval "set -- $(awk -f tokenizer.awk)"
 # Each even index number elements indicate token names.
 # Each odd index number elements contain its token values.
 jq -n '[$ARGS.positional | _nwise(2) | {key: .[0], value: .[1]}]' --args -- "$@"
-~~~
+```
 
 # MOTIVATION
 
@@ -58,7 +58,7 @@ If you can install CPAN modules, you should try [Email::Address::XS](https://met
 
 If you can use newer versions of Python (Batteries included!), the following code gives exact same result as `example.sh`:
 
-~~~python
+```python
 import sys
 from email.parser import Parser
 from email.policy import default
@@ -75,7 +75,7 @@ try:
             print(addr.addr_spec)
 except (TypeError, MessageError):
     pass
-~~~
+```
 
 # SUPPORTED TOKENS
 
@@ -111,9 +111,9 @@ except (TypeError, MessageError):
 
 # TESTING
 
-~~~
+```
 $ prove
-~~~
+```
 
 [^1]: https://datatracker.ietf.org/doc/html/rfc5322
 [^2]: http://www.etalabs.net/sh_tricks.html
