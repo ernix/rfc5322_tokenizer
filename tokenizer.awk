@@ -141,18 +141,10 @@ function emphasize(str) {
     return str;
 }
 
-function ltrim(str) {
+function trim(str) {
     sub(/^[ \t\r\n]+/, "", str);
-    return str;
-}
-
-function rtrim(str) {
     sub(/[ \t\r\n]+$/, "", str);
     return str;
-}
-
-function trim(str) {
-    return rtrim(ltrim(str));
 }
 
 function diag(str) {
