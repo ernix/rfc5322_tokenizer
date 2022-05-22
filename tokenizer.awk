@@ -1,8 +1,7 @@
 #!/usr/bin/awk -f
 
 BEGIN {
-    "tty" | getline tty;
-    tty = tty == "not a tty" ? 0 : 1;
+    tty = system("test ! -t 2");
 
     Q = "\047";
     QQ = "\042";
