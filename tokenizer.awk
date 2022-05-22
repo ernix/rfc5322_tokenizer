@@ -9,15 +9,17 @@ BEGIN {
     CR = "\r";
     LF = "\n";
     SP = "\040";
+    HTAB = "\011";
 
-    split("!" QQ \
-        "#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[" \
-        BS "]^_`abcdefghijklmnopqrstuvwxyz{|}~", arr_vchar, "");
+    # ALPHA =  %x41-5A / %x61-7A   ; A-Z / a-z
+    alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
-    ftext = "!" QQ "#$%&'()*+,-./0123456789" \
-         ";<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[" BS \
-         "]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+    # DIGIT =  %x30-39 ; 0-9
+    digit = "0123456789";
 
+    # VCHAR =  %x21-7E ; visible (printing) characters
+    split("!" QQ "#$%&'()*+,-./" alpha digit \
+        ":;<=>?@[" BS "]^_`{|}~", arr_vchar, "");
 
     # US-ASCII control characters that do not include the carriage return,
     # line feed, and white space characters
@@ -29,26 +31,53 @@ BEGIN {
 
     split(obs_no_ws_ctl, arr_obs_no_ws_ctl, "");
 
-    ctext = "!" QQ "#$%&'" \
-        "*+,-./0123456789:;<=>? @ABCDEFGHIJKLMNOPQRSTUVWXYZ[" \
-        "]^_`abcdefghijklmnopqrstuvwxyz{|}~" \
-        obs_no_ws_ctl;
+    # atext = ALPHA / DIGIT /    ; Printable US-ASCII
+    #         "!" / "#" /        ;  characters not including
+    #         "$" / "%" /        ;  specials.  Used for atoms.
+    #         "&" / "'" /
+    #         "*" / "+" /
+    #         "-" / "/" /
+    #         "=" / "?" /
+    #         "^" / "_" /
+    #         "`" / "{" /
+    #         "|" / "}" /
+    #         "~"
+    atext = alpha digit "!#$%&'*+-/=?^_`{|}~";
 
-    atext = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
-        "abcdefghijklmnopqrstuvwxyz" \
-        "0123456789" \
-        "!#$%&'*+-/=?^_`{|}~";
+    # ctext = %d33-39 /          ; Printable US-ASCII
+    #         %d42-91 /          ;  characters not including
+    #         %d93-126 /         ;  "(", ")", or "\"
+    #         obs-ctext
+    ctext = "!" QQ "#$%&'" alpha digit "*+,-./:;<=>? @[" \
+        "]^_`{|}~" obs_no_ws_ctl;
 
-    qtext = "!#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]" \
-        "^_`abcdefghijklmnopqrstuvwxyz{|}~";
+    # dtext = %d33-90 /          ; Printable US-ASCII
+    #         %d94-126 /         ;  characters not including
+    #         obs-dtext          ;  "[", "]", or "\"
+    dtext = "!" QQ "#$%&'()*+,-./:;<=>?@" alpha digit "^_`{|}~";
 
-    dtext = "!" QQ "#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
-        "^_`abcdefghijklmnopqrstuvwxyz{|}~";
+    # ftext = %d33-57 /          ; Printable US-ASCII
+    #         %d59-126           ;  characters not including
+    #                            ;  ":".
+    ftext = "!" QQ "#$%&'()*+,-./" ";<=>?@[" alpha digit BS "]^_`{|}~";
+
+    # qtext = %d33 /             ; Printable US-ASCII
+    #         %d35-91 /          ;  characters not including
+    #         %d93-126 /         ;  "\" or the quote character
+    #         obs-qtext
+    #
+    # obs-qtext = obs-NO-WS-CTL
+    qtext = "!#$%&'()*+,-./:;<=>?@[]" alpha digit "^_`{|}~" obs_no_ws_ctl;
+
+
+    # WSP = SP / HTAB ; white space
+    wsp = SP HTAB;
+
+    arr_wsp[1] = SP;
+    arr_wsp[2] = HTAB;
 
     split("Mon Tue Wed Thu Fri Sat Sun", arr_week, SP);
     split("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec", arr_month, SP);
-    split("\t| ", arr_wsp, "|");
-    split("0123456789", arr_digit, "");
     split("UT GMT EST EDT CST CDT MST MDT PST PDT", arr_obs_zone, SP);
 
     field = "";
@@ -245,9 +274,9 @@ function next_arr(array, _i, _) {
 function _consume_fws(_) {
     split("", _); markout(_);
 
-    _["wsp1"] = next_token_arr(arr_wsp);
+    _["wsp1"] = next_token(wsp);
     _["crlf"] = next_str(CR LF);
-    _["wsp2"] = next_token_arr(arr_wsp);
+    _["wsp2"] = next_token(wsp);
 
     # wsp2 can be empty when crlf is not exists
     if (_["wsp1"] == "" && _["wsp2"] == "") {
@@ -265,7 +294,7 @@ function _consume_fws(_) {
 function _consume_obs_fws(_) {
     split("", _); markout(_);
 
-    _["tmp"] = next_token_arr(arr_wsp);
+    _["tmp"] = next_token(wsp);
     if (_["tmp"] == "") { fatal(_); return 0; }
 
     while (1) {
@@ -273,7 +302,7 @@ function _consume_obs_fws(_) {
         if (z(_["crlf"])) { break; }
         _["tmp"] = _["tmp"] _["crlf"];
 
-        _["wsp2"] = next_token_arr(arr_wsp);
+        _["wsp2"] = next_token(wsp);
         if (_["wsp2"] == "") { fatal(_); return 0 }
         _["tmp"] = _["tmp"] _["wsp2"];
     }
@@ -478,7 +507,7 @@ function _consume_day(_) {
 
     _["tmp"] = _["tmp"] optional(consume_fws());
 
-    _["digit"] = next_token_arr(arr_digit);
+    _["digit"] = next_token(digit);
     _["len"] = length(_["digit"]);
     if (_["len"] < 1) { fatal(_); return 0; }
     if (_["len"] > 2) { fatal(_); return 0; }
@@ -500,7 +529,7 @@ function _consume_obs_day(_) {
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
-    _["digit"] = next_token_arr(arr_digit);
+    _["digit"] = next_token(digit);
     _["len"] = length(_["digit"]);
     if (_["len"] < 1) { fatal(_); return 0; }
     if (_["len"] > 2) { fatal(_); return 0; }
@@ -546,7 +575,7 @@ function _consume_year(_) {
     if (z(_["fws"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["fws"];
 
-    _["year"] = next_token_arr(arr_digit);
+    _["year"] = next_token(digit);
     if (length(_["year"]) < 4 ) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["year"];
 
@@ -566,7 +595,7 @@ function _consume_obs_year(_) {
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
-    _["year"] = next_token_arr(arr_digit);
+    _["year"] = next_token(digit);
     if (length(_["year"]) < 2) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["year"];
 
@@ -612,7 +641,7 @@ function consume_date(_) {
 function _consume_hour(_) {
     split("", _); markout(_);
 
-    _["hour"] = next_token_arr(arr_digit);
+    _["hour"] = next_token(digit);
     if (length(_["hour"]) != 2) { fatal(_); return 0; }
 
     stack("hour", _["hour"]);
@@ -627,7 +656,7 @@ function _consume_obs_hour(_) {
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
-    _["hour"] = next_token_arr(arr_digit);
+    _["hour"] = next_token(digit);
     if (length(_["hour"]) != 2) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["hour"];
 
@@ -652,7 +681,7 @@ function consume_hour(_) {
 function _consume_minute(_) {
     split("", _); markout(_);
 
-    _["minute"] = next_token_arr(arr_digit);
+    _["minute"] = next_token(digit);
     if (length(_["minute"]) != 2) { fatal(_); return 0; }
 
     stack("minute", _["minute"]);
@@ -667,7 +696,7 @@ function _consume_obs_minute(_) {
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
-    _["minute"] = next_token_arr(arr_digit);
+    _["minute"] = next_token(digit);
     if (length(_["minute"]) != 2) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["minute"];
 
@@ -692,7 +721,7 @@ function consume_minute(_) {
 function _consume_second(_) {
     split("", _); markout(_);
 
-    _["second"] = next_token_arr(arr_digit);
+    _["second"] = next_token(digit);
     if (length(_["second"]) != 2) { fatal(_); return 0; }
 
     stack("second", _["second"]);
@@ -707,7 +736,7 @@ function _consume_obs_second(_) {
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
-    _["minute"] = next_token_arr(arr_digit);
+    _["minute"] = next_token(digit);
     if (length(_["minute"]) != 2) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["minute"];
 
@@ -743,7 +772,7 @@ function _consume_zone(_) {
     if (z(_["sign"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["sign"];
 
-    _["digit"] = next_token_arr(arr_digit);
+    _["digit"] = next_token(digit);
     if (length(_["digit"]) != 4) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["digit"];
 
