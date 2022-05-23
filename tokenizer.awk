@@ -199,6 +199,7 @@ function fatal(stash, _, _dummy) {
             _["pre"] = _["_pre"];
         }
         else {
+            _["pos"] += length(_["header"]);
             _["pre"] = _["header"] _["pre"];
         }
 
@@ -1885,7 +1886,7 @@ function consume(_) {
     else { _["success"] = 1; } # unknown header
 
     if (!_["success"]) {
-        diag("ERROR:" ebuf);
+        diag("ERROR:" FILENAME ":" ebuf);
         error = 1;
     }
 
@@ -1930,7 +1931,7 @@ function main(nr, str, _) {
     }
 
     if (!_["idx"]) { _["idx"] = length(str); }
-    msg = "ERROR:" nr ":1: " \
+    msg = "ERROR:" FILENAME ":" nr ":1: " \
         emphasize(substr(str, 0, _["idx"])) \
         substr(str, _["idx"] + 1);
     diag(msg);
