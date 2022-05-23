@@ -180,13 +180,35 @@ function _clear(stash) {
     return 1;
 }
 
-function fatal(stash, _) {
+function fatal(stash, _, _dummy) {
     if (ebuf == "") {
-        _["pos"] = length(gbuf) - length(stash["buf"]);
+        _["header"] = field ":";
+        _["line"] = header_nr;
+        _["pos"] = length(gbuf) - length(stash["buf"]) + 1;
 
-        ebuf = "pos:" _["pos"] SP "[" field "]:" \
-            substr(gbuf, 0, _["pos"]) \
-            emphasize(substr(gbuf, _["pos"] + 1));
+        _["pre"] = substr(gbuf, 0, _["pos"] - 1);
+        _["post"] = substr(gbuf, _["pos"]);
+
+        _["n"] = split(_["pre"], _dummy, LF);
+        if (_["n"] > 1) {
+            _["line"] += (_["n"] - 1);
+
+            _["_pre"] = _["pre"];
+            sub(/^.*\n/, "", _["_pre"]);
+            _["pos"] = _["pos"] - (length(_["pre"]) - length(_["_pre"]));
+            _["pre"] = _["_pre"];
+        }
+        else {
+            _["pre"] = _["header"] _["pre"];
+        }
+
+        _["n"] = split(_["post"], _dummy, LF);
+        if (_["n"] > 1) {
+            sub(/\n.*$/, "", _["post"]);
+        }
+
+        ebuf = _["line"] ":" _["pos"] ": " \
+            _["pre"] emphasize(_["post"]);
     }
 
     _clear(stash)
@@ -1837,7 +1859,7 @@ function consume_keywords(_) {
     return _["tmp"];
 }
 
-function consume(nr, _) {
+function consume(_) {
     _["success"] = 0;
     gbuf = buf;
 
@@ -1863,7 +1885,7 @@ function consume(nr, _) {
     else { _["success"] = 1; } # unknown header
 
     if (!_["success"]) {
-        diag("ERROR: line:" nr SP ebuf);
+        diag("ERROR:" ebuf);
         error = 1;
     }
 
@@ -1894,7 +1916,7 @@ function main(nr, str, _) {
     _["idx"] = index(str, ":");
     if (_["idx"] > 1) {
         if (field != "") {
-            consume(header_nr);
+            consume();
         }
 
         field = substr(str, 1, _["idx"] - 1);
@@ -1908,7 +1930,7 @@ function main(nr, str, _) {
     }
 
     if (!_["idx"]) { _["idx"] = length(str); }
-    msg = "ERROR: line:" nr " pos:0 [(Malformed)]: " \
+    msg = "ERROR:" nr ":1: " \
         emphasize(substr(str, 0, _["idx"])) \
         substr(str, _["idx"] + 1);
     diag(msg);
@@ -1933,7 +1955,7 @@ NR == 1 && /^From / {
 }
 { main(NR, $0); }
 END {
-    consume(header_nr);
+    consume();
     print SP;  # dismiss last backslash produced by `stack()`
     exit error;
 }
