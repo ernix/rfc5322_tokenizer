@@ -1680,7 +1680,7 @@ function _consume_obs_addr_list(_) {
 
     while (1) {
         _["comma"] = next_str(",");
-        if (!_["comma"]) { break; }
+        if (!z(_["comma"])) { break; }
         _["tmp"] = _["tmp"] _["comma"];
 
         _["addr"] = consume_address();
