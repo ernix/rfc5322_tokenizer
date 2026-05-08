@@ -2061,7 +2061,7 @@ function main(nr, str, _) {
     $0 = substr($0, 1, length($0) - 1);
 }
 NR == 1 && /^From / {
-    # Skip MBOX separater line, see RFC 4155.
+    # Skip MBOX separator line, see RFC 4155.
     next;
 }
 /^$/ {
