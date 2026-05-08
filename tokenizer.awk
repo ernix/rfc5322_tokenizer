@@ -1217,11 +1217,11 @@ function consume_obs_domain_list(_) {
     }
 
     _["at"] = next_str("@");
-    if (!z(_["at"])) { fatal(_); return 0; }
+    if (z(_["at"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["at"];
 
     _["domain"] = consume_domain();
-    if (!z(_["domain"])) { fatal(_); return 0; }
+    if (z(_["domain"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["domain"];
 
     while (1) {
