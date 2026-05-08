@@ -786,13 +786,13 @@ function _consume_obs_second(_) {
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
-    _["minute"] = next_token(digit);
-    if (length(_["minute"]) != 2) { fatal(_); return 0; }
-    _["tmp"] = _["tmp"] _["minute"];
+    _["second"] = next_token(digit);
+    if (length(_["second"]) != 2) { fatal(_); return 0; }
+    _["tmp"] = _["tmp"] _["second"];
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
-    stack("obs-second", _["minute"]);
+    stack("obs-second", _["second"]);
     return _["tmp"];
 }
 
