@@ -81,7 +81,7 @@ done
 
 # In case when the last header is `Received:`
 if test "$header" = "Received"; then
-  if ! _trust_received_header "$by", "$prev_from"; then
+  if ! _trust_received_header "$by" "$prev_from"; then
     trust="$prev_by"
   fi
 fi
