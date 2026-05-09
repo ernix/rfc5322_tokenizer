@@ -43,7 +43,7 @@ while test $# -gt 0; do
 
   case "$header:$prep:$key" in
     *:field-name)
-      if ! _trust_received_header "$by", "$prev_from"; then
+      if ! _trust_received_header "$by" "$prev_from"; then
         trust="$prev_by"
         break
       fi
