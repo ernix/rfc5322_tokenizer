@@ -30,13 +30,7 @@ _trust_received_header() {
   return 0
 }
 
-from=
-by=
-prev_from=
-prev_by=
-header=
-prep=
-trust=
+from= by= prev_from= prev_by= header= prep= trust=
 while test $# -gt 0; do
   key="$1"; shift
   value="$1"; shift
