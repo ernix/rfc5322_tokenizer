@@ -69,7 +69,6 @@ BEGIN {
     # obs-qtext = obs-NO-WS-CTL
     qtext = "!#$%&'()*+,-./:;<=>?@[]" alpha digit "^_`{|}~" obs_no_ws_ctl;
 
-
     # WSP = SP / HTAB ; white space
     wsp = SP HTAB;
 
@@ -80,6 +79,16 @@ BEGIN {
     split("Mon Tue Wed Thu Fri Sat Sun", arr_week, SP);
     split("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec", arr_month, SP);
     split("UT GMT EST EDT CST CDT MST MDT PST PDT", arr_obs_zone, SP);
+
+    rfc5321_let_dig = alpha digit
+    rfc5321_hexdig = digit "abcdefABCDEF"
+
+    # qtextSMTP = %d32-33 / %d35-91 / %d93-126
+    #           ; i.e., within a quoted string, any
+    #           ; ASCII graphic or space is permitted
+    #           ; without blackslash-quoting except
+    #           ; double-quote and the backslash itself.
+    rfc5321_qtext_smtp = SP "!#$%&'()*+,-./:;<=>?@[]" alpha digit "^_`{|}~";
 
     field = "";
     buf = "";
@@ -92,7 +101,7 @@ BEGIN {
 
 # https://unix.stackexchange.com/a/363471/53620
 # is_true_zero
-function z(obj, _, _x, _i, _z) {
+function z(obj,    _, _x, _i, _z) {
     if (obj) { return 0; }
 
     _["found_delim"] = 0;
@@ -181,7 +190,7 @@ function _clear(stash) {
     return 1;
 }
 
-function fatal(stash, _, _dummy) {
+function fatal(stash,    _, _dummy) {
     if (ebuf == "") {
         _["header"] = field ":";
         _["line"] = header_nr;
@@ -223,7 +232,7 @@ function fallback(stash) {
     return 1;
 }
 
-function next_token(chars, _) {
+function next_token(chars,    _) {
     _["len"] = length(buf);
     for (_["pos"] = 0; _["pos"]++ < _["len"];) {
         if (index(chars, substr(buf, _["pos"], 1)) < 1) {
@@ -239,7 +248,7 @@ function next_token(chars, _) {
     return _["tmp"];
 }
 
-function next_token_arr(array, _i, _) {
+function next_token_arr(array,    _i, _) {
     _["tmp"] = "";
     do {
         _["seen"] = 0;
@@ -256,13 +265,13 @@ function next_token_arr(array, _i, _) {
     return _["tmp"];
 }
 
-function next_str(str, _) {
+function next_str(str,    _) {
     split("", _); markout(_);
 
     _["str_len"] = length(str);
     if (length(buf) >= _["str_len"] && _["str_len"] > 0) {
         _["pre"] = substr(buf, 0, _["str_len"]);
-        if (_["pre"] == str) {
+        if (tolower(_["pre"]) == tolower(str)) {
             buf = substr(buf, _["str_len"] + 1);
             return _["pre"];
         }
@@ -272,7 +281,7 @@ function next_str(str, _) {
     return 0;
 }
 
-function next_arr(array, _i, _) {
+function next_arr(array,    _i, _) {
     split("", _); markout(_);
 
     for (_i in array) {
@@ -287,7 +296,7 @@ function next_arr(array, _i, _) {
 }
 
 # [*WSP CRLF] 1*WSP
-function _consume_fws(_) {
+function _consume_fws(    _) {
     split("", _); markout(_);
 
     _["wsp1"] = next_token(wsp);
@@ -307,7 +316,7 @@ function _consume_fws(_) {
 }
 
 # obs-FWS = 1*WSP *(CRLF 1*WSP)
-function _consume_obs_fws(_) {
+function _consume_obs_fws(    _) {
     split("", _); markout(_);
 
     _["tmp"] = next_token(wsp);
@@ -327,7 +336,7 @@ function _consume_obs_fws(_) {
 }
 
 # FWS = ([*WSP CRLF] 1*WSP) / obs-FWS
-function consume_fws(_) {
+function consume_fws(    _) {
     split("", _); markout(_);
 
     _["fws"] = _consume_fws();
@@ -342,7 +351,7 @@ function consume_fws(_) {
 }
 
 # "\" (VCHAR / WSP)
-function _consume_quoted_pair(_) {
+function _consume_quoted_pair(    _) {
     split("", _); markout(_);
 
     _["tmp"] = next_str(BS);
@@ -362,7 +371,7 @@ function _consume_quoted_pair(_) {
 }
 
 # obs-qp = "\" (%d0 / obs-NO-WS-CTL / LF / CR)
-function _consume_obs_qp(_) {
+function _consume_obs_qp(    _) {
     split("", _); markout(_);
 
     _["tmp"] = next_str(BS);
@@ -385,7 +394,7 @@ function _consume_obs_qp(_) {
 }
 
 # quoted-pair = ("\" (VCHAR / WSP)) / obs-qp
-function consume_quoted_pair(_) {
+function consume_quoted_pair(    _) {
     split("", _); markout(_);
 
     _["tmp"] = _consume_quoted_pair();
@@ -401,7 +410,7 @@ function consume_quoted_pair(_) {
 }
 
 # ccontent = ctext / quoted-pair / comment
-function consume_ccontent(_) {
+function consume_ccontent(    _) {
     split("", _); markout(_);
 
     _["tmp"] = next_token(ctext);
@@ -418,7 +427,7 @@ function consume_ccontent(_) {
 }
 
 # comment = "(" *([FWS] ccontent) [FWS] ")"
-function consume_comment(_) {
+function consume_comment(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -449,7 +458,7 @@ function consume_comment(_) {
 }
 
 # CFWS = (1*([FWS] comment) [FWS]) / FWS
-function consume_cfws(_) {
+function consume_cfws(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -480,7 +489,7 @@ function consume_cfws(_) {
 }
 
 # [FWS] day-name
-function _consume_day_of_week(_) {
+function _consume_day_of_week(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -496,7 +505,7 @@ function _consume_day_of_week(_) {
 }
 
 # obs-day-of-week = [CFWS] day-name [CFWS]
-function _consume_obs_day_of_week(_) {
+function _consume_obs_day_of_week(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -514,7 +523,7 @@ function _consume_obs_day_of_week(_) {
 }
 
 # day-of-week = ([FWS] day-name) / obs-day-of-week
-function consume_day_of_week(_) {
+function consume_day_of_week(    _) {
     split("", _); markout(_);
 
     _["dow"] = _consume_day_of_week();
@@ -530,7 +539,7 @@ function consume_day_of_week(_) {
 }
 
 # [FWS] 1*2DIGIT FWS
-function _consume_day(_) {
+function _consume_day(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -552,7 +561,7 @@ function _consume_day(_) {
 }
 
 # obs-day = [CFWS] 1*2DIGIT [CFWS]
-function _consume_obs_day(_) {
+function _consume_obs_day(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -572,7 +581,7 @@ function _consume_obs_day(_) {
 }
 
 # day = ([FWS] 1*2DIGIT FWS) / obs-day
-function consume_day(_) {
+function consume_day(    _) {
     split("", _); markout(_);
 
     _["day"] = _consume_day();
@@ -590,7 +599,7 @@ function consume_day(_) {
 # month =   "Jan" / "Feb" / "Mar" / "Apr" /
 #           "May" / "Jun" / "Jul" / "Aug" /
 #           "Sep" / "Oct" / "Nov" / "Dec"
-function consume_month(_) {
+function consume_month(    _) {
     split("", _); markout(_);
 
     _["tmp"] = next_arr(arr_month);
@@ -601,7 +610,7 @@ function consume_month(_) {
 }
 
 # FWS 4*DIGIT FWS
-function _consume_year(_) {
+function _consume_year(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -623,7 +632,7 @@ function _consume_year(_) {
 }
 
 # obs-year = [CFWS] 2*DIGIT [CFWS]
-function _consume_obs_year(_) {
+function _consume_obs_year(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -641,7 +650,7 @@ function _consume_obs_year(_) {
 }
 
 # year = (FWS 4*DIGIT FWS) / obs-year
-function consume_year(_) {
+function consume_year(    _) {
     split("", _); markout(_);
 
     _["year"] = _consume_year();
@@ -657,7 +666,7 @@ function consume_year(_) {
 }
 
 # date = day month year
-function consume_date(_) {
+function consume_date(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -678,7 +687,7 @@ function consume_date(_) {
 }
 
 # 2DIGIT
-function _consume_hour(_) {
+function _consume_hour(    _) {
     split("", _); markout(_);
 
     _["hour"] = next_token(digit);
@@ -689,7 +698,7 @@ function _consume_hour(_) {
 }
 
 # obs-hour = [CFWS] 2DIGIT [CFWS]
-function _consume_obs_hour(_) {
+function _consume_obs_hour(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -707,7 +716,7 @@ function _consume_obs_hour(_) {
 }
 
 # hour = 2DIGIT / obs-hour
-function consume_hour(_) {
+function consume_hour(    _) {
     split("", _); markout(_);
 
     _["hour"] = _consume_hour();
@@ -723,7 +732,7 @@ function consume_hour(_) {
 }
 
 # 2DIGIT
-function _consume_minute(_) {
+function _consume_minute(    _) {
     split("", _); markout(_);
 
     _["minute"] = next_token(digit);
@@ -734,7 +743,7 @@ function _consume_minute(_) {
 }
 
 # obs-minute = [CFWS] 2DIGIT [CFWS]
-function _consume_obs_minute(_) {
+function _consume_obs_minute(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -752,7 +761,7 @@ function _consume_obs_minute(_) {
 }
 
 # minute = 2DIGIT / obs-minute
-function consume_minute(_) {
+function consume_minute(    _) {
     split("", _); markout(_);
 
     _["minute"] = _consume_minute();
@@ -768,7 +777,7 @@ function consume_minute(_) {
 }
 
 # 2DIGIT
-function _consume_second(_) {
+function _consume_second(    _) {
     split("", _); markout(_);
 
     _["second"] = next_token(digit);
@@ -779,7 +788,7 @@ function _consume_second(_) {
 }
 
 # obs-second = [CFWS] 2DIGIT [CFWS]
-function _consume_obs_second(_) {
+function _consume_obs_second(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -797,7 +806,7 @@ function _consume_obs_second(_) {
 }
 
 # second = 2DIGIT / obs-second
-function consume_second(_) {
+function consume_second(    _) {
     split("", _); markout(_);
 
     _["second"] = _consume_second();
@@ -812,7 +821,7 @@ function consume_second(_) {
 }
 
 # FWS ( "+" / "-" ) 4DIGIT
-function _consume_zone(_) {
+function _consume_zone(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -841,7 +850,7 @@ function _consume_zone(_) {
 #            "MST" / "MDT" / ; Mountain: - 7/ - 6
 #            "PST" / "PDT" / ; Pacific:  - 8/ - 7
 #                            ;
-function _consume_obs_zone(_) {
+function _consume_obs_zone(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -858,7 +867,7 @@ function _consume_obs_zone(_) {
 }
 
 # zone = (FWS ( "+" / "-" ) 4DIGIT) / obs-zone
-function consume_zone(_) {
+function consume_zone(    _) {
     split("", _); markout(_);
 
     _["tmp"] = _consume_zone();
@@ -874,7 +883,7 @@ function consume_zone(_) {
 }
 
 # time-of-day = hour ":" minute [ ":" second ]
-function consume_time_of_day(_) {
+function consume_time_of_day(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -903,7 +912,7 @@ function consume_time_of_day(_) {
 }
 
 # time = time-of-day zone
-function consume_time(_) {
+function consume_time(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -920,7 +929,7 @@ function consume_time(_) {
 }
 
 # date-time = [ day-of-week "," ] date time [CFWS]
-function consume_date_time(_) {
+function consume_date_time(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -947,7 +956,7 @@ function consume_date_time(_) {
 }
 
 # mailbox *("," mailbox)
-function _consume_mailbox_list(_) {
+function _consume_mailbox_list(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -966,7 +975,7 @@ function _consume_mailbox_list(_) {
 }
 
 # obs-mbox-list = *([CFWS] ",") mailbox *("," [mailbox / CFWS])
-function _consume_obs_mbox_list(_) {
+function _consume_obs_mbox_list(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1001,7 +1010,7 @@ function _consume_obs_mbox_list(_) {
 }
 
 # mailbox-list = (mailbox *("," mailbox)) / obs-mbox-list
-function consume_mailbox_list(_) {
+function consume_mailbox_list(    _) {
     split("", _); markout(_);
 
     _["tmp"] = _consume_mailbox_list();
@@ -1017,7 +1026,7 @@ function consume_mailbox_list(_) {
 }
 
 # atom = [CFWS] 1*atext [CFWS]
-function consume_atom(_) {
+function consume_atom(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1034,7 +1043,7 @@ function consume_atom(_) {
 }
 
 # qcontent = qtext / quoted-pair
-function consume_qcontent(_) {
+function consume_qcontent(    _) {
     split("", _); markout(_);
 
     _["tmp"] = next_token(qtext);
@@ -1052,10 +1061,10 @@ function consume_qcontent(_) {
 # quoted-string = [CFWS]
 #                 DQUOTE *([FWS] qcontent) [FWS] DQUOTE
 #                 [CFWS]
-function consume_quoted_string(_) {
+function consume_quoted_string(    _) {
     split("", _); markout(_);
 
-    _["tmp"] = ""
+    _["tmp"] = "";
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
@@ -1083,7 +1092,7 @@ function consume_quoted_string(_) {
 }
 
 # word = atom / quoted-string
-function consume_word(_) {
+function consume_word(    _) {
     split("", _); markout(_);
 
     _["tmp"] = consume_atom();
@@ -1099,7 +1108,7 @@ function consume_word(_) {
 }
 
 # 1*word
-function _consume_phrase(_) {
+function _consume_phrase(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1117,7 +1126,7 @@ function _consume_phrase(_) {
 }
 
 # obs-phrase = word *(word / "." / CFWS)
-function _consume_obs_phrase(_) {
+function _consume_obs_phrase(    _) {
     split("", _); markout(_);
 
     _["tmp"] = consume_word();
@@ -1150,7 +1159,7 @@ function _consume_obs_phrase(_) {
 }
 
 # phrase = 1*word / obs-phrase
-function consume_phrase(_) {
+function consume_phrase(    _) {
     split("", _); markout(_);
 
     _["tmp"] = _consume_phrase();
@@ -1166,7 +1175,7 @@ function consume_phrase(_) {
 }
 
 # display-name = phrase
-function consume_display_name(_) {
+function consume_display_name(    _) {
     split("", _); markout(_);
 
     _["tmp"] = consume_phrase();
@@ -1177,7 +1186,7 @@ function consume_display_name(_) {
 }
 
 # [CFWS] "<" addr-spec ">" [CFWS]
-function _consume_angle_addr(_) {
+function _consume_angle_addr(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1203,7 +1212,7 @@ function _consume_angle_addr(_) {
 
 # obs-domain-list = *(CFWS / ",") "@" domain
 #                   *("," [CFWS] ["@" domain])
-function consume_obs_domain_list(_) {
+function consume_obs_domain_list(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1244,7 +1253,7 @@ function consume_obs_domain_list(_) {
 }
 
 # obs-route = obs-domain-list ":"
-function consume_obs_route(_) {
+function consume_obs_route(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1261,7 +1270,7 @@ function consume_obs_route(_) {
 }
 
 # obs-angle-addr = [CFWS] "<" obs-route addr-spec ">" [CFWS]
-function _consume_obs_angle_addr(_) {
+function _consume_obs_angle_addr(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1292,7 +1301,7 @@ function _consume_obs_angle_addr(_) {
 
 # angle-addr = [CFWS] "<" addr-spec ">" [CFWS] /
 #              obs-angle-addr
-function consume_angle_addr(_) {
+function consume_angle_addr(    _) {
     split("", _); markout(_);
 
     _["tmp"] = _consume_angle_addr();
@@ -1308,7 +1317,7 @@ function consume_angle_addr(_) {
 }
 
 # name-addr = [display-name] angle-addr
-function consume_name_addr(_) {
+function consume_name_addr(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1323,7 +1332,7 @@ function consume_name_addr(_) {
 }
 
 # dot-atom-text = 1*atext *("." 1*atext)
-function consume_dot_atom_text(_) {
+function consume_dot_atom_text(    _) {
     split("", _); markout(_);
 
     _["tmp"] = next_token(atext);
@@ -1343,7 +1352,7 @@ function consume_dot_atom_text(_) {
 }
 
 # dot-atom = [CFWS] dot-atom-text [CFWS]
-function consume_dot_atom(_) {
+function consume_dot_atom(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1360,7 +1369,7 @@ function consume_dot_atom(_) {
 }
 
 # obs-local-part = word *("." word)
-function consume_obs_local_part(_) {
+function consume_obs_local_part(    _) {
     split("", _); markout(_);
 
     _["tmp"] = consume_word();
@@ -1380,7 +1389,7 @@ function consume_obs_local_part(_) {
 }
 
 # local-part = dot-atom / quoted-string / obs-local-part
-function consume_local_part(_) {
+function consume_local_part(    _) {
     split("", _); markout(_);
 
     _["tmp"] = consume_dot_atom();
@@ -1401,7 +1410,7 @@ function consume_local_part(_) {
 }
 
 # dtext
-function _consume_dtext(_) {
+function _consume_dtext(    _) {
     split("", _); markout(_);
 
     _["tmp"] = next_token(dtext);
@@ -1411,7 +1420,7 @@ function _consume_dtext(_) {
 }
 
 # obs-dtext = obs-NO-WS-CTL / quoted-pair
-function _consume_obs_dtext(_) {
+function _consume_obs_dtext(    _) {
     split("", _); markout(_);
 
     _["tmp"] = next_arr(arr_obs_no_ws_ctl);
@@ -1429,7 +1438,7 @@ function _consume_obs_dtext(_) {
 # dtext = %d33-90 /  ; Printable US-ASCII
 #         %d94-126 / ;  characters not including
 #         obs-dtext  ;  "[", "]", or "\"
-function consume_dtext(_) {
+function consume_dtext(    _) {
     split("", _); markout(_);
 
     _["tmp"] = _consume_dtext();
@@ -1445,7 +1454,7 @@ function consume_dtext(_) {
 }
 
 # domain-literal = [CFWS] "[" *([FWS] dtext) [FWS] "]" [CFWS]
-function consume_domain_literal(_) {
+function consume_domain_literal(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1476,7 +1485,7 @@ function consume_domain_literal(_) {
 }
 
 # obs-domain = atom *("." atom)
-function consume_obs_domain(_) {
+function consume_obs_domain(    _) {
     split("", _); markout(_);
 
     _["tmp"] = consume_atom();
@@ -1496,7 +1505,7 @@ function consume_obs_domain(_) {
 }
 
 # domain = dot-atom / domain-literal / obs-domain
-function consume_domain(_) {
+function consume_domain(    _) {
     split("", _); markout(_);
 
     _["tmp"] = consume_dot_atom();
@@ -1517,7 +1526,7 @@ function consume_domain(_) {
 }
 
 # addr-spec = local-part "@" domain
-function consume_addr_spec(_) {
+function consume_addr_spec(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1539,7 +1548,7 @@ function consume_addr_spec(_) {
 }
 
 # mailbox = name-addr / addr-spec
-function consume_mailbox(_) {
+function consume_mailbox(    _) {
     split("", _); markout(_, "mailbox");
 
     _["tmp"] = consume_name_addr();
@@ -1555,7 +1564,7 @@ function consume_mailbox(_) {
 }
 
 # obs-group-list = 1*([CFWS] ",") [CFWS]
-function consume_obs_group_list(_) {
+function consume_obs_group_list(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1579,7 +1588,7 @@ function consume_obs_group_list(_) {
 }
 
 # group-list = mailbox-list / CFWS / obs-group-list
-function consume_group_list(_) {
+function consume_group_list(    _) {
     split("", _); markout(_, "group-list");
 
     _["tmp"] = consume_mailbox_list();
@@ -1600,7 +1609,7 @@ function consume_group_list(_) {
 }
 
 # group = display-name ":" [group-list] ";" [CFWS]
-function consume_group(_) {
+function consume_group(    _) {
     split("", _); markout(_, "group");
 
     _["tmp"] = "";
@@ -1625,7 +1634,7 @@ function consume_group(_) {
 }
 
 # address = mailbox / group
-function consume_address(_) {
+function consume_address(    _) {
     split("", _); markout(_);
 
     _["tmp"] = consume_mailbox();
@@ -1641,7 +1650,7 @@ function consume_address(_) {
 }
 
 # address *("," address)
-function _consume_address_list(_) {
+function _consume_address_list(    _) {
     split("", _); markout(_);
 
     _["tmp"] = consume_address();
@@ -1661,7 +1670,7 @@ function _consume_address_list(_) {
 }
 
 # obs-addr-list = *([CFWS] ",") address *("," [address / CFWS])
-function _consume_obs_addr_list(_) {
+function _consume_obs_addr_list(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1695,7 +1704,7 @@ function _consume_obs_addr_list(_) {
 }
 
 # address-list = (address *("," address)) / obs-addr-list
-function consume_address_list(_) {
+function consume_address_list(    _) {
     split("", _); markout(_);
 
     _["tmp"] = _consume_address_list();
@@ -1711,7 +1720,7 @@ function consume_address_list(_) {
 }
 
 # [address-list / CFWS]
-function consume_bcc(_) {
+function consume_bcc(    _) {
     split("", _); markout(_);
 
     _["tmp"] = consume_address_list();
@@ -1727,7 +1736,7 @@ function consume_bcc(_) {
 }
 
 # obs-id-left = local-part
-function _consume_obs_id_left(_) {
+function _consume_obs_id_left(    _) {
     split("", _); markout(_);
 
     _["tmp"] = consume_local_part();
@@ -1738,7 +1747,7 @@ function _consume_obs_id_left(_) {
 }
 
 # id-left = dot-atom-text / obs-id-left
-function consume_id_left(_) {
+function consume_id_left(    _) {
     split("", _); markout(_);
 
     _["tmp"] = consume_dot_atom_text();
@@ -1754,7 +1763,7 @@ function consume_id_left(_) {
 }
 
 # no-fold-literal = "[" *dtext "]"
-function consume_no_fold_literal(_) {
+function consume_no_fold_literal(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1773,7 +1782,7 @@ function consume_no_fold_literal(_) {
 }
 
 # obs-id-right = domain
-function _consume_obs_id_right(_) {
+function _consume_obs_id_right(    _) {
     split("", _); markout(_);
 
     _["tmp"] = consume_domain();
@@ -1783,7 +1792,7 @@ function _consume_obs_id_right(_) {
 }
 
 # id-right = dot-atom-text / no-fold-literal / obs-id-right
-function consume_id_right(_) {
+function consume_id_right(    _) {
     split("", _); markout(_);
 
     _["tmp"] = consume_dot_atom_text();
@@ -1804,7 +1813,7 @@ function consume_id_right(_) {
 }
 
 # msg-id = [CFWS] "<" id-left "@" id-right ">" [CFWS]
-function consume_msg_id(_) {
+function consume_msg_id(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1840,7 +1849,7 @@ function consume_msg_id(_) {
 }
 
 # references = "References:" 1*msg-id CRLF
-function consume_references(_) {
+function consume_references(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1860,7 +1869,7 @@ function consume_references(_) {
 }
 
 # path = angle-addr / ([CFWS] "<" [CFWS] ">" [CFWS])
-function consume_path(_) {
+function consume_path(    _) {
     split("", _); markout(_);
 
     _["angle_addr"] = consume_angle_addr();
@@ -1888,7 +1897,7 @@ function consume_path(_) {
 }
 
 # received-token = word / angle-addr / addr-spec / domain
-function consume_received_token(_) {
+function consume_received_token(    _) {
     split("", _); markout(_);
 
     _["angle_addr"] = consume_angle_addr();
@@ -1924,10 +1933,889 @@ function consume_received_token(_) {
     return 0;
 }
 
+# Ldh-str = *( ALPHA / DIGIT / "-" ) Let-dig
+function consume_rfc5321_ldh_str(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = next_token(alpha digit "-");
+    if (_["tmp"] == "") { fatal(_); return 0; }
+    if (substr(_["tmp"], length(_["tmp"]), 1) == "-") { fatal(_); return 0; }
+
+    return _["tmp"];
+}
+
+# sub-domain = Let-dig [Ldh-str]
+function consume_rfc5321_sub_domain(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = next_token(rfc5321_let_dig);
+    if (_["tmp"] == "") { fatal(_); return 0; }
+
+    return _["tmp"] optional(consume_rfc5321_ldh_str());
+}
+
+# Domain = sub-domain *("." sub-domain)
+function consume_rfc5321_domain(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = consume_rfc5321_sub_domain();
+    if (z(_["tmp"])) { fatal(_); return 0; }
+
+    while (1) {
+        _["dot"] = next_str(".")
+        if (z(_["dot"])) { break; }
+        _["tmp"] = _["tmp"] _["dot"];
+
+        _["sub_domain"] = consume_rfc5321_sub_domain();
+        if (z(_["sub_domain"])) { fatal(_); return 0; }
+        _["tmp"] = _["tmp"] _["sub_domain"];
+    }
+
+    stack("domain", _["tmp"]);
+    return _["tmp"];
+}
+
+# Snum = 1*3DIGIT
+#        ; representing a decimal integer
+#        ; value in the range 0 through 255
+function consume_rfc5321_snum(    _) {
+    split("", _); markout(_);
+
+    _["digit"] = next_token(digit);
+    _["len"] = length(_["digit"]);
+    if (_["len"] < 1 || _["len"] > 3) { fatal(_); return 0; }
+    if (_["digit"] + 0 > 255) { fatal(_); return 0; }
+
+    return _["digit"];
+}
+
+# IPv4-address-literal = Snum 3("."  Snum)
+function consume_rfc5321_ipv4_address_literal(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = consume_rfc5321_snum();
+    if (z(_["tmp"])) { fatal(_); return 0; }
+
+    for (_["i"] = 0; _["i"]++ < 3;) {
+        _["dot"] = next_str(".");
+        if (z(_["dot"])) { fatal(_); return 0; }
+        _["tmp"] = _["tmp"] _["dot"];
+
+        _["snum"] = consume_rfc5321_snum();
+        if (z(_["snum"])) { fatal(_); return 0; }
+        _["tmp"] = _["tmp"] _["snum"];
+    }
+
+    return _["tmp"];
+}
+
+# IPv6-hex = 1*4HEXDIG
+function consume_rfc5321_ipv6_hex(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = next_token(rfc5321_hexdig);
+    _["len"] = length(_["tmp"]);
+    if (_["len"] < 1 || 4 < _["len"]) { fatal(_); return 0; }
+
+    return _["tmp"];
+}
+
+# IPv6-full = IPv6-hex 7(":" IPv6-hex)
+function consume_rfc5321_ipv6_full(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = consume_rfc5321_ipv6_hex();
+    if (z(_["tmp"])) { fatal(_); return 0; }
+
+    for (_["i"] = 0; _["i"]++ < 7;) {
+        _["colon"] = next_str(":");
+        if (z(_["colon"])) { fatal(_); return 0; }
+        _["tmp"] = _["tmp"] _["colon"];
+
+        _["hex"] = consume_rfc5321_ipv6_hex();
+        if (z(_["hex"])) { fatal(_); return 0; }
+        _["tmp"] = _["tmp"] _["hex"];
+    }
+
+    return _["tmp"];
+}
+
+# IPv6-comp = [IPv6-hex *5(":" IPv6-hex)] "::"
+#             [IPv6-hex *5(":" IPv6-hex)]
+#             ; The "::" represents at least 2 16-bit groups of
+#             ; zeros.  No more than 6 groups in addition to the
+#             ; "::" may be present.
+# IPv6-comp = [IPv6-hex *5(":" IPv6-hex)] "::"
+#             [IPv6-hex *5(":" IPv6-hex)]
+function consume_rfc5321_ipv6_comp(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = "";
+
+    _["hex"] = consume_rfc5321_ipv6_hex();
+    if (!z(_["hex"])) {
+        _["tmp"] = _["hex"];
+        _["i"] = 0;
+        while (_["i"]++ < 5) {
+            if (substr(buf, 1, 2) == "::") { break; }
+            _["colon"] = next_str(":");
+            if (z(_["colon"])) { break; }
+            _["hex2"] = consume_rfc5321_ipv6_hex();
+            if (z(_["hex2"])) { fatal(_); return 0; }
+            _["tmp"] = _["tmp"] _["colon"] _["hex2"];
+        }
+    }
+
+    _["dcolon"] = next_str("::");
+    if (z(_["dcolon"])) { fatal(_); return 0; }
+    _["tmp"] = _["tmp"] _["dcolon"];
+
+    _["hex"] = consume_rfc5321_ipv6_hex();
+    if (!z(_["hex"])) {
+        _["tmp"] = _["tmp"] _["hex"];
+        _["i"] = 0;
+        while (_["i"]++ < 5) {
+            _["colon"] = next_str(":");
+            if (z(_["colon"])) { break; }
+            _["hex2"] = consume_rfc5321_ipv6_hex();
+            if (z(_["hex2"])) { fatal(_); return 0; }
+            _["tmp"] = _["tmp"] _["colon"] _["hex2"];
+        }
+    }
+
+    return _["tmp"];
+}
+
+# IPv6v4-full = IPv6-hex 5(":" IPv6-hex) ":" IPv4-address-literal
+function consume_rfc5321_ipv6v4_full(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = consume_rfc5321_ipv6_hex();
+    if (z(_["tmp"])) { fatal(_); return 0; }
+
+    for (_["i"] = 0; _["i"]++ < 5;) {
+        _["colon"] = next_str(":");
+        if (z(_["colon"])) { fatal(_); return 0; }
+        _["tmp"] = _["tmp"] _["colon"];
+
+        _["hex"] = consume_rfc5321_ipv6_hex();
+        if (z(_["hex"])) { fatal(_); return 0; }
+        _["tmp"] = _["tmp"] _["hex"];
+    }
+
+    _["colon"] = next_str(":");
+    if (z(_["colon"])) { fatal(_); return 0; }
+    _["tmp"] = _["tmp"] _["colon"];
+
+    _["ipv4"] = consume_rfc5321_ipv4_address_literal();
+    if (z(_["ipv4"])) { fatal(_); return 0; }
+
+    return _["tmp"] _["ipv4"];
+}
+
+# IPv6v4-comp = [IPv6-hex *3(":" IPv6-hex)]
+#               "::" [IPv6-hex *3(":" IPv6-hex) ":"]
+#               IPv4-address-literal
+function consume_rfc5321_ipv6v4_comp(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = "";
+
+    _["hex"] = consume_rfc5321_ipv6_hex();
+    if (!z(_["hex"])) {
+        _["tmp"] = _["hex"];
+        _["i"] = 0;
+        while (_["i"]++ < 3) {
+            if (substr(buf, 1, 2) == "::") { break; }
+            _["colon"] = next_str(":");
+            if (z(_["colon"])) { break; }
+            _["hex2"] = consume_rfc5321_ipv6_hex();
+            if (z(_["hex2"])) { fatal(_); return 0; }
+            _["tmp"] = _["tmp"] _["colon"] _["hex2"];
+        }
+    }
+
+    _["dcolon"] = next_str("::");
+    if (z(_["dcolon"])) { fatal(_); return 0; }
+    _["tmp"] = _["tmp"] _["dcolon"];
+
+    for (_["i"] = 0; _["i"] <= 4; _["i"]++) {
+        _["ipv4"] = consume_rfc5321_ipv4_address_literal();
+        if (!z(_["ipv4"])) { return _["tmp"] _["ipv4"]; }
+        if (_["i"] == 4) { break; }
+        _["hex"] = consume_rfc5321_ipv6_hex();
+        if (z(_["hex"])) { fatal(_); return 0; }
+        _["colon"] = next_str(":");
+        if (z(_["colon"])) { fatal(_); return 0; }
+        _["tmp"] = _["tmp"] _["hex"] _["colon"];
+    }
+
+    fatal(_);
+    return 0;
+}
+
+# IPv6-addr = IPv6-full / IPv6-comp / IPv6v4-full / IPv6v4-comp
+function consume_rfc5321_ipv6_addr(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = consume_rfc5321_ipv6v4_full();
+    if (!z(_["tmp"])) { return _["tmp"]; }
+
+    fallback(_);
+
+    _["tmp"] = consume_rfc5321_ipv6_full();
+    if (!z(_["tmp"])) { return _["tmp"]; }
+
+    fallback(_);
+
+    _["tmp"] = consume_rfc5321_ipv6v4_comp();
+    if (!z(_["tmp"])) { return _["tmp"]; }
+
+    fallback(_);
+
+    _["tmp"] = consume_rfc5321_ipv6_comp();
+    if (!z(_["tmp"])) { return _["tmp"]; }
+
+    fatal(_);
+    return 0;
+}
+
+# IPv6-address-literal = "IPv6:" IPv6-addr
+function consume_rfc5321_ipv6_address_literal(    _) {
+    split("", _); markout(_);
+
+    _["prefix"] = next_str("ipv6:");
+    if (z(_["prefix"])) { fatal(_); return 0; }
+
+    _["addr"] = consume_rfc5321_ipv6_addr();
+    if (z(_["addr"])) { fatal(_); return 0; }
+
+    return _["prefix"] _["addr"];
+}
+
+# General-address-literal = Standardized-tag ":" 1*dcontent
+function consume_rfc5321_general_address_literal(    _) {
+    split("", _); markout(_);
+
+    _["tag"] = consume_rfc5321_ldh_str();
+    if (z(_["tag"])) { fatal(_); return 0; }
+
+    _["colon"] = next_str(":");
+    if (z(_["colon"])) { fatal(_); return 0; }
+
+    _["content"] = next_token(dtext);
+    if (_["content"] == "") { fatal(_); return 0; }
+
+    return _["tag"] _["colon"] _["content"];
+}
+
+function _consume_rfc5321_address_literal(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = consume_rfc5321_ipv4_address_literal();
+    if (!z(_["tmp"])) { return _["tmp"]; }
+
+    fallback(_);
+
+    _["tmp"] = consume_rfc5321_ipv6_address_literal();
+    if (!z(_["tmp"])) { return _["tmp"]; }
+
+    fallback(_);
+
+    _["tmp"] = consume_rfc5321_general_address_literal();
+    if (!z(_["tmp"])) { return _["tmp"]; }
+
+    fatal(_);
+    return 0;
+}
+
+# address-literal = "[" ( IPv4-address-literal /
+#                   IPv6-address-literal /
+#                   General-address-literal ) "]"
+#                   ; See Section 4.1.3
+function consume_rfc5321_address_literal(    _) {
+    split("", _); markout(_);
+
+    _["op_bracket"] = next_str("[");
+    if (z(_["op_bracket"])) { fatal(_); return 0; }
+
+    _["address_literal"] = _consume_rfc5321_address_literal();
+    if (z(_["address_literal"])) { fatal(_); return 0; }
+
+    _["cl_bracket"] = next_str("]");
+    if (z(_["cl_bracket"])) { fatal(_); return 0; }
+
+    stack("address", _["address_literal"]);
+    return _["op_bracket"] _["address_literal"] _["cl_bracket"];
+}
+
+# TCP-info = address-literal / ( Domain FWS address-literal )
+#            ; Information derived by server from TCP connection
+#            ; not client EHLO.
+function consume_rfc5321_tcp_info(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = consume_rfc5321_address_literal();
+    if (!z(_["tmp"])) { return _["tmp"]; }
+
+    fallback(_);
+
+    _["domain"] = consume_rfc5321_domain();
+    if (z(_["domain"])) { fatal(_); return 0; }
+
+    _["fws"] = consume_fws();
+    if (z(_["fws"])) { fatal(_); return 0; }
+
+    _["addr_lit"] = consume_rfc5321_address_literal();
+    if (z(_["addr_lit"])) { fatal(_); return 0; }
+
+    return _["domain"] _["fws"] _["addr_lit"];
+}
+
+# Extended-Domain = Domain /
+#                   ( Domain FWS "(" TCP-info ")" ) /
+#                   ( address-literal FWS "(" TCP-info ")" )
+function consume_rfc5321_extended_domain(    _) {
+    split("", _); markout(_);
+
+    _["addr_lit"] = consume_rfc5321_address_literal();
+    if (!z(_["addr_lit"])) {
+        _["fws"] = consume_fws();
+        if (z(_["fws"])) { fatal(_); return 0; }
+
+        _["op"] = next_str("(");
+        if (z(_["op"])) { fatal(_); return 0; }
+
+        _["tcp"] = consume_rfc5321_tcp_info();
+        if (z(_["tcp"])) { fatal(_); return 0; }
+
+        _["cp"] = next_str(")");
+        if (z(_["cp"])) { fatal(_); return 0; }
+
+        return _["addr_lit"] _["fws"] _["op"] _["tcp"] _["cp"];
+    }
+
+    fallback(_);
+
+    _["domain"] = consume_rfc5321_domain();
+    if (z(_["domain"])) { fatal(_); return 0; }
+
+    _["fws"] = consume_fws();
+    if (z(_["fws"])) { return _["domain"]; }
+
+    _["op"] = next_str("(");
+    if (z(_["op"])) {
+        buf = _["fws"] buf;
+        return _["domain"];
+    }
+
+    _["tcp"] = consume_rfc5321_tcp_info();
+    if (z(_["tcp"])) { fatal(_); return 0; }
+
+    _["cp"] = next_str(")");
+    if (z(_["cp"])) { fatal(_); return 0; }
+
+    return _["domain"] _["fws"] _["op"] _["tcp"] _["cp"];
+}
+
+# From-domain = "FROM" FWS Extended-Domain
+function consume_rfc5321_from_domain(    _) {
+    split("", _); markout(_);
+
+    _["kw"] = next_str("from");
+    if (z(_["kw"])) { fatal(_); return 0; }
+    stack("word", _["kw"]);
+
+    _["fws"] = consume_fws();
+    if (z(_["fws"])) { fatal(_); return 0; }
+
+    _["ext_domain"] = consume_rfc5321_extended_domain();
+    if (z(_["ext_domain"])) { fatal(_); return 0; }
+
+    return _["kw"] _["fws"] _["ext_domain"];
+}
+
+# By-domain = CFWS "BY" FWS Extended-Domain
+function consume_rfc5321_by_domain(    _) {
+    split("", _); markout(_);
+
+    _["cfws"] = consume_cfws();
+    if (z(_["cfws"])) { fatal(_); return 0; }
+
+    _["kw"] = next_str("by");
+    if (z(_["kw"])) { fatal(_); return 0; }
+    stack("word", _["kw"]);
+
+    _["fws"] = consume_fws();
+    if (z(_["fws"])) { fatal(_); return 0; }
+
+    _["ext_domain"] = consume_rfc5321_extended_domain();
+    if (z(_["ext_domain"])) { fatal(_); return 0; }
+
+    return _["cfws"] _["kw"] _["fws"] _["ext_domain"];
+}
+
+# Atom = 1*atext
+function consume_rfc5321_atom(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = next_token(atext);
+    if (_["tmp"] == "") { fatal(_); return 0; }
+
+    return _["tmp"];
+}
+
+# Addtl-Link = Atom
+#              ; Additional standard names for links are
+#              ; registered with the Internet Assigned Numbers
+#              ; Authority (IANA).  "Via" is primarily of value
+#              ; with non-Internet transports.  SMTP servers
+#              ; SHOULD NOT use unregistered names.
+function consume_rfc5321_addtl_link(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = consume_rfc5321_atom();
+    if (z(_["tmp"])) { fatal(_); return 0; }
+
+    return _["tmp"];
+}
+
+# Link = "TCP" / Addtl-Link
+function consume_rfc5321_link(    _) {
+    split("", _); markout(_);
+
+    _["kw"] = next_str("tcp");
+    if (!z(_["kw"])) {
+        stack("word", _["kw"]);
+        return _["kw"];
+    }
+
+    fallback(_);
+
+    _["addtl_link"] = consume_rfc5321_addtl_link();
+    if (!z(_["addtl_link"])) {
+        return _["addtl_link"];
+    }
+
+    fatal(_);
+    return 0;
+}
+
+# Via = CFWS "VIA" FWS Link
+function consume_rfc5321_via(    _) {
+    split("", _); markout(_);
+
+    _["cfws"] = consume_cfws();
+    if (z(_["cfws"])) { fatal(_); return 0; }
+
+    _["kw"] = next_str("via");
+    if (z(_["kw"])) { fatal(_); return 0; }
+    stack("word", _["kw"]);
+
+    _["fws"] = consume_fws();
+    if (z(_["fws"])) { fatal(_); return 0; }
+
+    _["link"] = consume_rfc5321_link();
+    if (z(_["link"])) { fatal(_); return 0; }
+
+    return _["cfws"] _["kw"] _["fws"] _["link"];
+}
+
+# Attdl-Protocol = Atom
+#                  ; Additional standard names for protocols are
+#                  ; registered with the Internet Assigned Numbers
+#                  ; Authority (IANA) in the "mail parameters"
+#                  ; registry [9].  SMTP servers SHOULD NOT
+#                  ; use unregistered names.
+function consume_rfc5321_addtl_protocol(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = consume_rfc5321_atom();
+    if (z(_["tmp"])) { fatal(_); return 0; }
+
+    return _["tmp"];
+}
+
+# Protocol = "ESMTP" / "SMTP" / Attdl-Protocol
+function consume_rfc5321_protocol(    _) {
+    split("", _); markout(_);
+
+    _["kw"] = next_str("esmtp");
+    if (!z(_["kw"])) {
+        stack("protocol", _["kw"]);
+        return _["kw"];
+    }
+
+    fallback(_);
+
+    _["kw"] = next_str("smtp");
+    if (!z(_["kw"])) {
+        stack("protocol", _["kw"]);
+        return _["kw"];
+    }
+
+    fallback(_);
+
+    _["addtl_proto"] = consume_rfc5321_addtl_protocol();
+    if (!z(_["addtl_proto"])) {
+        stack("protocol", _["addtl_proto"]);
+        return _["addtl_proto"];
+    }
+
+    fatal(_);
+    return 0;
+}
+
+# With = CFWS "WITH" FWS Protocol
+function consume_rfc5321_with(    _) {
+    split("", _); markout(_);
+
+    _["cfws"] = consume_cfws();
+    if (z(_["cfws"])) { fatal(_); return 0; }
+
+    _["kw"] = next_str("with");
+    if (z(_["kw"])) { fatal(_); return 0; }
+    stack("word", _["kw"]);
+
+    _["fws"] = consume_fws();
+    if (z(_["fws"])) { fatal(_); return 0; }
+
+    _["proto"] = consume_rfc5321_protocol();
+    if (z(_["proto"])) { fatal(_); return 0; }
+
+    return _["cfws"] _["kw"] _["fws"] _["proto"];
+}
+
+function _consume_rfc5321_id(    _) {
+    split("", _); markout(_);
+
+    _["msgid"] = consume_msg_id();
+    if (!z(_["msgid"])) { return _["msgid"]; }
+
+    fallback(_);
+
+    _["tmp"] = consume_rfc5321_atom();
+    if (!z(_["tmp"])) { return _["tmp"]; }
+
+    fatal(_);
+    return 0;
+}
+
+# ID = CFWS "ID" FWS ( Atom / msg-id )
+#      ; msg-id is defined in RFC 5322 [4]
+function consume_rfc5321_id(    _) {
+    split("", _); markout(_);
+
+    _["cfws"] = consume_cfws();
+    if (z(_["cfws"])) { fatal(_); return 0; }
+
+    _["kw"] = next_str("id");
+    if (z(_["kw"])) { fatal(_); return 0; }
+    stack("word", _["kw"]);
+
+    _["fws"] = consume_fws();
+    if (z(_["fws"])) { fatal(_); return 0; }
+
+    _["tmp"] = _consume_rfc5321_id();
+    if (z(_["tmp"])) { fatal(_); return 0; }
+
+    return _["cfws"] _["kw"] _["fws"] _["tmp"];
+}
+
+# A-d-l = At-domain *( "," At-domain )
+#         ; Note that this form, the so-called "source
+#         ; route", MUST BE accepted, SHOULD NOT be
+#         ; generated, and SHOULD be ignored.
+function consume_rfc5321_a_d_l(    _) {
+    split("", _); markout(_);
+}
+
+function _consume_rfc5321_a_d_l(    _) {
+    split("", _); markout(_);
+
+    _["a_d_l"] = consume_rfc5321_a_d_l();
+    if (z(_["a_d_l"])) { fatal(_); return 0; }
+
+    _["colon"] = next_str(":");
+    if (z(_["colon"])) { fatal(_); return 0; }
+
+    return _["a_d_l"] _["colon"];
+}
+
+# Dot-string = Atom *("."  Atom)
+function consume_rfc5321_dot_string(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = consume_rfc5321_atom();
+    if (z(_["tmp"])) { fatal(_); return 0; }
+
+    while (1) {
+        _["dot"] = next_str(".");
+        if (z(_["dot"])) { break; }
+        _["tmp"] = _["tmp"] _["dot"];
+
+        _["atom"] = consume_rfc5321_atom();
+        if (z(_["atom"])) { fatal(_); return 0; }
+        _["tmp"] = _["tmp"] _["atom"];
+    }
+
+    return _["tmp"];
+}
+
+# quoted-pairSMTP = %d92 %d32-126
+#                   ; i.e., backslash followed by any ASCII
+#                   ; graphic (including itself) or SPace
+function consume_rfc5321_quoted_pair_smtp(    _) {
+    split("", _); markout(_);
+
+    _["bs"] = next_str(BS);
+    if (z(_["bs"])) { fatal(_); return 0; }
+
+    _["vchar"] = next_arr(arr_vchar);
+    if (z(_["vchar"])) { fatal(_); return 0; }
+
+    return _["bs"] _["vchar"];
+}
+
+# QcontentSMTP = qtextSMTP / quoted-pairSMTP
+function consume_rfc5321_qcontent_smtp(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = next_token(rfc5321_qtext_smtp);
+    if (_["tmp"] != "") { return _["tmp"]; }
+
+    fallback(_);
+
+    _["tmp"] = consume_rfc5321_quoted_pair_smtp();
+    if (!z(_["tmp"])) { return _["tmp"]; }
+
+    fatal(_);
+    return 0;
+}
+
+# Quoted-string = DQUOTE *QcontentSMTP DQUOTE
+function consume_rfc5321_quoted_string(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = "";
+
+    _["DQUOTE"] = next_str(QQ);
+    if (z(_["DQUOTE"])) { fatal(_); return 0; }
+    _["tmp"] = _["tmp"] _["DQUOTE"];
+
+    while (1) {
+        _["QContentSMTP"] = consume_rfc5321_qcontent_smtp();
+        if (z(_["QContentSMTP"])) { break; }
+        _["tmp"] = _["tmp"] _["QContentSMTP"];
+    }
+
+    _["DQUOTE"] = next_str(QQ);
+    if (z(_["DQUOTE"])) { fatal(_); return 0; }
+    _["tmp"] = _["tmp"] _["DQUOTE"];
+
+    return _["tmp"];
+}
+
+# Local-part = Dot-string / Quoted-string
+#              ; MAY be case-sensitive
+function consume_rfc5321_local_part(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = consume_rfc5321_dot_string();
+    if (!z(_["tmp"])) { return _["tmp"]; }
+
+    fallback(_);
+
+    _["tmp"] = consume_rfc5321_quoted_string();
+    if (!z(_["tmp"])) { return _["tmp"]; }
+
+    fatal(_);
+    return 0;
+}
+
+function _consume_rfc5321_mailbox(    _) {
+    split("", _); markout(_);
+
+    _["domain"] = consume_rfc5321_domain();
+    if (!z(_["domain"])) { return _["domain"]; }
+
+    fallback(_);
+
+    _["addr_lit"] = consume_rfc5321_address_literal();
+    if (!z(_["addr_lit"])) { return _["addr_lit"]; }
+
+    fatal(_);
+    return 0;
+}
+
+# Mailbox = Local-part "@" ( Domain / address-literal )
+function consume_rfc5321_mailbox(    _) {
+    split("", _); markout(_);
+
+    _["local_part"] = consume_rfc5321_local_part();
+    if (z(_["local_part"])) { fatal(_); return 0; }
+
+    _["at"] = next_str("@");
+    if (z(_["at"])) { fatal(_); return 0; }
+
+    _["rest"] = _consume_rfc5321_mailbox();
+    if (z(_["rest"])) { fatal(_); return 0; }
+
+    return _["local_part"] _["at"] _["rest"];
+}
+
+# Path = "<" [ A-d-l ":" ] Mailbox ">"
+function consume_rfc5321_path(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = "";
+
+    _["op_angle"] = next_str("<");
+    if (z(_["op_angle"])) { fatal(_); return 0; }
+    _["tmp"] = _["tmp"] _["op_angle"];
+
+    _["a_d_l"] = optional(_consume_rfc5321_a_d_l());
+    _["tmp"] = _["tmp"] _["a_d_l"];
+
+    _["mailbox"] = consume_rfc5321_mailbox();
+    if (z(_["mailbox"])) { fatal(_); return 0; }
+    _["tmp"] = _["tmp"] _["mailbox"];
+
+    _["cl_angle"] = next_str(">");
+    if (z(_["cl_angle"])) { fatal(_); return 0; }
+    _["tmp"] = _["tmp"] _["cl_angle"];
+
+    return _["tmp"];
+}
+
+function _consume_rfc5321_for(    _) {
+    split("", _); markout(_);
+
+    _["path"] = consume_rfc5321_path();
+    if (!z(_["path"])) { return _["path"]; }
+
+    fallback(_);
+
+    _["mailbox"] = consume_rfc5321_mailbox();
+    if (!z(_["mailbox"])) { return _["mailbox"]; }
+
+    fatal(_);
+    return 0;
+}
+
+# For = CFWS "FOR" FWS ( Path / Mailbox )
+function consume_rfc5321_for(    _) {
+    split("", _); markout(_);
+
+    _["cfws"] = consume_cfws();
+    if (z(_["cfws"])) { fatal(_); return 0; }
+
+    _["kw"] = next_str("for");
+    if (z(_["kw"])) { fatal(_); return 0; }
+    stack("word", _["kw"]);
+
+    _["fws"] = consume_fws();
+    if (z(_["fws"])) { fatal(_); return 0; }
+
+    _["tmp"] = _consume_rfc5321_for();
+    if (z(_["tmp"])) { fatal(_); return 0; }
+
+    return _["cfws"] _["kw"] _["fws"] _["tmp"];
+}
+
+# String = Atom / Quoted-string
+function consume_rfc5321_string(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = consume_rfc5321_atom();
+    if (!z(_["tmp"])) { return _["tmp"]; }
+
+    fallback(_);
+
+    _["tmp"] = consume_rfc5321_quoted_string();
+    if (!z(_["tmp"])) { return _["tmp"]; }
+
+    fatal(_);
+    return 0;
+}
+
+# Additional-Registered-Clauses = CFWS Atom FWS String
+#                                 ; Additional standard clauses may be added in this
+#                                 ; location by future standards and registration with
+#                                 ; IANA.  SMTP servers SHOULD NOT use unregistered
+#                                 ; names.  See Section 8.
+function consume_rfc5321_additional_registered_clauses(    _) {
+    split("", _); markout(_);
+
+    _["cfws"] = consume_cfws();
+    if (z(_["cfws"])) { fatal(_); return 0; }
+
+    _["atom"] = consume_rfc5321_atom();
+    if (z(_["atom"])) { fatal(_); return 0; }
+
+    _["fws"] = consume_fws();
+    if (z(_["fws"])) { fatal(_); return 0; }
+
+    _["string"] = consume_rfc5321_string();
+    if (z(_["string"])) { fatal(_); return 0; }
+
+    return _["cfws"] _["atom"] _["fws"] _["string"];
+}
+
+# Opt-info = [Via] [With] [ID] [For]
+#            [Additional-Registered-Clauses]
+function consume_rfc5321_opt_info(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = "";
+    _["tmp"] = _["tmp"] optional(consume_rfc5321_via());
+    _["tmp"] = _["tmp"] optional(consume_rfc5321_with());
+    _["tmp"] = _["tmp"] optional(consume_rfc5321_id());
+    _["tmp"] = _["tmp"] optional(consume_rfc5321_for());
+    _["tmp"] = _["tmp"] optional(consume_rfc5321_additional_registered_clauses());
+
+    return _["tmp"]
+}
+
+# Time-stamp-line = "Received:" FWS Stamp <CRLF>
+# Stamp = From-domain By-domain Opt-info [CFWS] ";"
+#         FWS date-time
+#         ; where "date-time" is as defined in RFC 5322 [4]
+#         ; but the "obs-" forms, especially two-digit
+#         ; years, are prohibited in SMTP and MUST NOT be used.
+function consume_rfc5321_received(    _) {
+    split("", _); markout(_);
+
+    _["fws1"] = consume_fws();
+    if (z(_["fws1"])) { fatal(_); return 0; }
+
+    _["from"] = consume_rfc5321_from_domain();
+    if (z(_["from"])) { fatal(_); return 0; }
+
+    _["by"] = consume_rfc5321_by_domain();
+    if (z(_["by"])) { fatal(_); return 0; }
+
+    _["opt"] = consume_rfc5321_opt_info();
+    if (z(_["opt"])) { fatal(_); return 0; }
+
+    _["cfws"] = optional(consume_cfws());
+
+    _["semicolon"] = next_str(";");
+    if (z(_["semicolon"])) { fatal(_); return 0; }
+
+    _["fws2"] = consume_fws();
+    if (z(_["fws2"])) { fatal(_); return 0; }
+
+    _["date_time"] = consume_date_time();
+    if (z(_["date_time"])) { fatal(_); return 0; }
+
+    return _["fws1"] _["from"] _["by"] _["opt"] _["cfws"] _["semicolon"] _["fws2"] _["date_time"];
+}
+
 # Errata 3979: https://www.rfc-editor.org/errata/eid3979
 # received = "Received:" [1*received-token / CFWS]
 #              ";" date-time CRLF
-function consume_received(_) {
+function consume_received(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1956,7 +2844,7 @@ function consume_received(_) {
 }
 
 # phrase *("," phrase)
-function consume_keywords(_) {
+function consume_keywords(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1974,7 +2862,7 @@ function consume_keywords(_) {
     return _["tmp"];
 }
 
-function consume(_) {
+function consume(    _) {
     _["success"] = 0;
     gbuf = buf;
 
@@ -1995,7 +2883,13 @@ function consume(_) {
     else if (field == "Recent-Bcc") { _["success"] = consume_bcc(); }
     else if (field == "Recent-Message-ID") { _["success"] = consume_msg_id(); }
     else if (field == "Return-Path") { _["success"] = consume_path(); }
-    else if (field == "Received") { _["success"] = consume_received(); }
+    else if (field == "Received") {
+        _["success"] = consume_rfc5321_received();
+        if (z(_["success"])) {
+            # fallback to RFC5322
+            _["success"] = consume_received();
+        }
+    }
     else if (field == "Keywords") { _["success"] = consume_keywords(); }
     else { _["success"] = 1; } # unknown header
 
@@ -2009,7 +2903,7 @@ function consume(_) {
     return 1;
 }
 
-function within(str, chars, _) {
+function within(str, chars,    _) {
     for (_["i"] = 0; _["i"]++ < length(str);) {
         if (index(chars, substr(str, _["i"], 1)) < 1) {
             # `str` contains characters that not in `chars`
@@ -2020,7 +2914,7 @@ function within(str, chars, _) {
     return 1;
 }
 
-function main(nr, str, _) {
+function main(nr, str,    _) {
     if (str ~ /^[\t ]/ && field != "") {
         # concat folded lines
         buf = buf CR LF str;

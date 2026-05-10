@@ -125,7 +125,9 @@ except (TypeError, MessageError):
 
 ## `Received`
 
+* `address`
 * `domain`
+* `msg-id`
 * `word`
 
 # TESTING
