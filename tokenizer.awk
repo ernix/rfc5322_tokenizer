@@ -1971,7 +1971,6 @@ function consume_rfc5321_domain(    _) {
         _["tmp"] = _["tmp"] _["sub_domain"];
     }
 
-    stack("domain", _["tmp"]);
     return _["tmp"];
 }
 
@@ -2299,6 +2298,7 @@ function consume_rfc5321_extended_domain(    _) {
 
     _["domain"] = consume_rfc5321_domain();
     if (z(_["domain"])) { fatal(_); return 0; }
+    stack("domain", _["domain"]);
 
     _["fws"] = consume_fws();
     if (z(_["fws"])) { return _["domain"]; }
