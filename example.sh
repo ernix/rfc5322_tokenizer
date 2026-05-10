@@ -12,10 +12,10 @@ while test $# -gt 0; do
 
   case $key in
     field-name)
-      header="$value"
+      header=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
       ;;
     addr-spec)
-      if test "$header" = "To"; then
+      if test "$header" = "to"; then
         printf "%s\n" "$value"
       fi
       ;;

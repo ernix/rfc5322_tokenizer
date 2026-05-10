@@ -2864,33 +2864,34 @@ function consume_keywords(    _) {
 
 function consume(    _) {
     _["success"] = 0;
+    _["field"] = tolower(field);
     gbuf = buf;
 
-    if (field == "Date") { _["success"] = consume_date_time(); }
-    else if (field == "From") { _["success"] = consume_mailbox_list(); }
-    else if (field == "Sender") { _["success"] = consume_mailbox(); }
-    else if (field == "Reply-To") { _["success"] = consume_address_list(); }
-    else if (field == "To") { _["success"] = consume_address_list(); }
-    else if (field == "Cc") { _["success"] = consume_address_list(); }
-    else if (field == "Bcc") { _["success"] = consume_bcc(); }
-    else if (field == "Message-ID") { _["success"] = consume_msg_id(); }
-    else if (field == "References") { _["success"] = consume_references(); }
-    else if (field == "Recent-Date") { _["success"] = consume_date_time(); }
-    else if (field == "Recent-From") { _["success"] = consume_mailbox_list(); }
-    else if (field == "Recent-Sender") { _["success"] = consume_mailbox(); }
-    else if (field == "Recent-To") { _["success"] = consume_address_list(); }
-    else if (field == "Recent-Cc") { _["success"] = consume_address_list(); }
-    else if (field == "Recent-Bcc") { _["success"] = consume_bcc(); }
-    else if (field == "Recent-Message-ID") { _["success"] = consume_msg_id(); }
-    else if (field == "Return-Path") { _["success"] = consume_path(); }
-    else if (field == "Received") {
+    if (_["field"] == "date") { _["success"] = consume_date_time(); }
+    else if (_["field"] == "from") { _["success"] = consume_mailbox_list(); }
+    else if (_["field"] == "sender") { _["success"] = consume_mailbox(); }
+    else if (_["field"] == "reply-to") { _["success"] = consume_address_list(); }
+    else if (_["field"] == "to") { _["success"] = consume_address_list(); }
+    else if (_["field"] == "cc") { _["success"] = consume_address_list(); }
+    else if (_["field"] == "bcc") { _["success"] = consume_bcc(); }
+    else if (_["field"] == "message-id") { _["success"] = consume_msg_id(); }
+    else if (_["field"] == "references") { _["success"] = consume_references(); }
+    else if (_["field"] == "recent-date") { _["success"] = consume_date_time(); }
+    else if (_["field"] == "recent-from") { _["success"] = consume_mailbox_list(); }
+    else if (_["field"] == "recent-sender") { _["success"] = consume_mailbox(); }
+    else if (_["field"] == "recent-to") { _["success"] = consume_address_list(); }
+    else if (_["field"] == "recent-cc") { _["success"] = consume_address_list(); }
+    else if (_["field"] == "recent-bcc") { _["success"] = consume_bcc(); }
+    else if (_["field"] == "recent-message-id") { _["success"] = consume_msg_id(); }
+    else if (_["field"] == "return-path") { _["success"] = consume_path(); }
+    else if (_["field"] == "received") {
         _["success"] = consume_rfc5321_received();
         if (z(_["success"])) {
             # fallback to RFC5322
             _["success"] = consume_received();
         }
     }
-    else if (field == "Keywords") { _["success"] = consume_keywords(); }
+    else if (_["field"] == "keywords") { _["success"] = consume_keywords(); }
     else { _["success"] = 1; } # unknown header
 
     if (!_["success"]) {

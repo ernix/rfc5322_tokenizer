@@ -20,41 +20,41 @@ from= by= prev_from= prev_by= header= prep= found=
 while test $# -gt 0; do
   key="$1"; shift
   value="$1"; shift
-  # printf %s\\n "$header,$prep,$from,$by,$key,$value"
 
   case "$header,$prep,$from,$by,$key" in
-    Received,from,,*,domain)
+    received,from,,*,domain)
       # trust anchor
       from="$value"
       ;;
-    Received,by,*,,domain)
+    received,by,*,,domain)
       # trust anchor
       by="$value"
       ;;
-    Received,from,*,domain)
+    received,from,*,domain)
       prev_from="$from"
       from="$value"
       ;;
-    Received,by,*,domain)
+    received,by,*,domain)
       prev_by="$by"
       by="$value"
       ;;
-    Received,*,word)
-      case "$value" in
+    received,*,word)
+      prep=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+      case "$prep" in
         from|by|via|with|id|for)
           # In fact, RFC 5321 specifies strict token order in trace info,
           # but this script doesn't care.
           # In any case, malicious `Received:` headers can't predict next (the
           # one right above) header that will be used for tracing.
-          prep="$value"
           ;;
         *)
+          prep=
           ;;
       esac
       ;;
     *,field-name)
       prep=
-      header="$value"
+      header=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
       if test -n "$by" && test -n "$prev_from"; then
         # if previous "from" not contains current "by"
         if test "$prev_from" != "$by"; then
