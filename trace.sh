@@ -41,10 +41,6 @@ while test $# -gt 0; do
       prep=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
       case "$prep" in
         from|by|via|with|id|for)
-          # In fact, RFC 5321 specifies strict token order in trace info,
-          # but this script doesn't care.
-          # In any case, malicious `Received:` headers can't predict next (the
-          # one right above) header that will be used for tracing.
           ;;
         *)
           prep=
