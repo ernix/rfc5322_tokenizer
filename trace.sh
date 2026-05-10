@@ -16,7 +16,7 @@ eval "set -- $(awk -f "$dir/tokenizer.awk")"
 # In case when the last header is "Received:"
 set -- "$@" field-name X-Dummy
 
-from= by= prev_from= prev_by= header= prep= found=
+from= by= prev_from= header= prep= found=
 while test $# -gt 0; do
   key="$1"; shift
   value="$1"; shift
@@ -35,7 +35,6 @@ while test $# -gt 0; do
       from="$value"
       ;;
     received,by,*,domain)
-      prev_by="$by"
       by="$value"
       ;;
     received,*,word)
