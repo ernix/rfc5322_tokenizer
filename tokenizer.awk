@@ -500,7 +500,6 @@ function _consume_day_of_week(    _) {
     if (z(_["day_name"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["day_name"];
 
-    stack("day-name", _["day_name"]);
     return _["tmp"];
 }
 
@@ -518,7 +517,6 @@ function _consume_obs_day_of_week(    _) {
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
-    stack("day-name", _["day_name"]);
     return _["tmp"];
 }
 
@@ -556,7 +554,6 @@ function _consume_day(    _) {
     if (z(_["fws"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["fws"];
 
-    stack("day", _["digit"]);
     return _["tmp"];
 }
 
@@ -576,7 +573,6 @@ function _consume_obs_day(    _) {
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
-    stack("obs-day", _["digit"]);
     return _["tmp"];
 }
 
@@ -605,7 +601,6 @@ function consume_month(    _) {
     _["tmp"] = next_arr(arr_month);
     if (z(_["tmp"])) { fatal(_); return 0; }
 
-    stack("month", _["tmp"]);
     return _["tmp"];
 }
 
@@ -627,7 +622,6 @@ function _consume_year(    _) {
     if (z(_["fws"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["fws"];
 
-    stack("year", _["year"]);
     return _["tmp"];
 }
 
@@ -645,7 +639,6 @@ function _consume_obs_year(    _) {
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
-    stack("obs-year", _["year"]);
     return _["tmp"];
 }
 
@@ -693,7 +686,6 @@ function _consume_hour(    _) {
     _["hour"] = next_token(digit);
     if (length(_["hour"]) != 2) { fatal(_); return 0; }
 
-    stack("hour", _["hour"]);
     return _["hour"];
 }
 
@@ -711,7 +703,6 @@ function _consume_obs_hour(    _) {
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
-    stack("obs-hour", _["hour"]);
     return _["tmp"];
 }
 
@@ -738,7 +729,6 @@ function _consume_minute(    _) {
     _["minute"] = next_token(digit);
     if (length(_["minute"]) != 2) { fatal(_); return 0; }
 
-    stack("minute", _["minute"]);
     return _["minute"];
 }
 
@@ -756,7 +746,6 @@ function _consume_obs_minute(    _) {
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
-    stack("obs-minute", _["minute"]);
     return _["tmp"];
 }
 
@@ -783,7 +772,6 @@ function _consume_second(    _) {
     _["second"] = next_token(digit);
     if (length(_["second"]) != 2) { fatal(_); return 0; }
 
-    stack("second", _["second"]);
     return _["second"];
 }
 
@@ -801,7 +789,6 @@ function _consume_obs_second(    _) {
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
-    stack("obs-second", _["second"]);
     return _["tmp"];
 }
 
@@ -838,7 +825,6 @@ function _consume_zone(    _) {
     if (length(_["digit"]) != 4) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["digit"];
 
-    stack("zone", _["sign"] _["digit"]);
     return _["tmp"];
 }
 
@@ -862,7 +848,6 @@ function _consume_obs_zone(    _) {
     if (z(_["zone"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["zone"];
 
-    stack("obs-zone", _["zone"]);
     return _["tmp"];
 }
 
@@ -952,6 +937,7 @@ function consume_date_time(    _) {
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
+    stack("date-time", _["dow"] _["comma"] _["date"] _["time"]);
     return _["tmp"];
 }
 

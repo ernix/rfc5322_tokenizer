@@ -100,25 +100,12 @@ except (TypeError, MessageError):
 
 * `addr-spec`
 * `comment`
-* `day-name`
-* `day`
+* `date-time`
 * `field-name`
-* `hour`
-* `minute`
-* `month`
 * `msg-id`
-* `obs-day`
-* `obs-hour`
-* `obs-minute`
 * `obs-phrase`
-* `obs-second`
-* `obs-year`
-* `obs-zone`
 * `phrase`
-* `second`
 * `unstructured`
-* `year`
-* `zone`
 
 * `---`
     Special marker token to represent separators for ambiguous nested structures.
