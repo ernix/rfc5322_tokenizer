@@ -2853,6 +2853,7 @@ function consume_keywords(    _) {
 function consume(    _) {
     _["success"] = 0;
     _["field"] = tolower(field);
+    ebuf = "";
     gbuf = buf;
 
     if (_["field"] == "date") { _["success"] = consume_date_time(); }
