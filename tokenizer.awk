@@ -924,8 +924,8 @@ function consume_date_time(    _) {
     if (!z(_["dow"])) {
         _["comma"] = next_str(",");
         if (z(_["comma"])) { fatal(_); return 0; }
+        _["tmp"] = _["tmp"] _["dow"] _["comma"];
     }
-    _["tmp"] = _["tmp"] _["dow"] _["comma"];
 
     _["date"] = consume_date();
     if (z(_["date"])) { fatal(_); return 0; }
@@ -937,7 +937,7 @@ function consume_date_time(    _) {
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
-    stack("date-time", _["dow"] _["comma"] _["date"] _["time"]);
+    stack("date-time", optional(_["dow"]) _["comma"] _["date"] _["time"]);
     return _["tmp"];
 }
 
