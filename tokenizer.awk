@@ -2916,6 +2916,10 @@ function main(nr, str,    _) {
         }
 
         field = substr(str, 1, _["idx"] - 1);
+
+        # obs-optional: strip trailing WSP
+        sub(/[[:space:]]+$/, "", field);
+
         if (within(field, ftext)) {
             stack("field-name", field);
             flush();
