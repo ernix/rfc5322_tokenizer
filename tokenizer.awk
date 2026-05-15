@@ -1351,6 +1351,11 @@ function consume_dot_atom(    _) {
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
+    # If a "." follows the trailing CFWS, this is obs-domain or obs-local-part
+    # (e.g. "machine(comment).example"), not a plain dot-atom. Let the caller
+    # fall back to the obs-* variant.
+    if (substr(buf, 1, 1) == ".") { fatal(_); return 0; }
+
     return _["tmp"];
 }
 
