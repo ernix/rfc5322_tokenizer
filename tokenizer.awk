@@ -1741,11 +1741,8 @@ function _consume_obs_id_left(    _) {
 function consume_id_left(    _) {
     split("", _); markout(_);
 
-    _["tmp"] = consume_dot_atom_text();
-    if (!z(_["tmp"])) { return _["tmp"]; }
-
-    fallback(_);
-
+    # obs-id-left (local-part) subsumes dot-atom-text and also handles
+    # CFWS before "@" via dot-atom's trailing CFWS (e.g. "user   @host").
     _["tmp"] = _consume_obs_id_left();
     if (!z(_["tmp"])) { return _["tmp"]; }
 
