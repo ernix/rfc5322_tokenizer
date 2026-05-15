@@ -793,14 +793,14 @@ function consume_second(    _) {
 }
 
 # FWS ( "+" / "-" ) 4DIGIT
+# FWS is optional here because obs-hour/minute/second trailing CFWS may
+# have already consumed the separating whitespace.
 function _consume_zone(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
 
-    _["fws"] = consume_fws();
-    if (z(_["fws"])) { fatal(_); return 0; }
-    _["tmp"] = _["tmp"] _["fws"];
+    _["tmp"] = _["tmp"] optional(consume_fws());
 
     _["sign"] = next_arr(arr_sign);
     if (z(_["sign"])) { fatal(_); return 0; }
