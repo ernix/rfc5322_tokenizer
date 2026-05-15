@@ -1130,15 +1130,18 @@ function _consume_obs_phrase(    _) {
 }
 
 # phrase = 1*word / obs-phrase
+# obs-phrase subsumes 1*word (it allows "." and CFWS between words), so try
+# obs-phrase first to avoid a strict match on a prefix that causes the caller
+# to fail (e.g. "Joe Q. Public" stopping at "." before "<addr>").
 function consume_phrase(    _) {
     split("", _); markout(_);
 
-    _["tmp"] = _consume_phrase();
+    _["tmp"] = _consume_obs_phrase();
     if (!z(_["tmp"])) { return _["tmp"]; }
 
     fallback(_);
 
-    _["tmp"] = _consume_obs_phrase();
+    _["tmp"] = _consume_phrase();
     if (!z(_["tmp"])) { return _["tmp"]; }
 
     fatal(_);
