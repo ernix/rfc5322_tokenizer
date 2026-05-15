@@ -2945,8 +2945,9 @@ function main(nr, str,    _) {
     # Remove trailing CR if exists
     $0 = substr($0, 1, length($0) - 1);
 }
-NR == 1 && /^From / {
+NR == 1 && /^From / && !/^From[[:space:]]*:/ {
     # Skip MBOX separator line, see RFC 4155.
+    # Exclude obs-from
     next;
 }
 /^$/ {
