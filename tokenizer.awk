@@ -1269,7 +1269,6 @@ function _consume_obs_angle_addr(    _) {
 
     _["tmp"] = _["tmp"] optional(consume_cfws());
 
-    stack("addr-spec", _["addr_spec"]);
     return _["tmp"];
 }
 
