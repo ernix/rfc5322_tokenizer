@@ -710,11 +710,6 @@ function _consume_obs_hour(    _) {
 function consume_hour(    _) {
     split("", _); markout(_);
 
-    _["hour"] = _consume_hour();
-    if (!z(_["hour"])) { return _["hour"]; }
-
-    fallback(_);
-
     _["hour"] = _consume_obs_hour();
     if (!z(_["hour"])) { return _["hour"]; }
 
@@ -753,11 +748,6 @@ function _consume_obs_minute(    _) {
 function consume_minute(    _) {
     split("", _); markout(_);
 
-    _["minute"] = _consume_minute();
-    if (!z(_["minute"])) { return _["minute"]; }
-
-    fallback(_);
-
     _["minute"] = _consume_obs_minute();
     if (!z(_["minute"])) { return _["minute"]; }
 
@@ -795,11 +785,6 @@ function _consume_obs_second(    _) {
 # second = 2DIGIT / obs-second
 function consume_second(    _) {
     split("", _); markout(_);
-
-    _["second"] = _consume_second();
-    if (!z(_["second"])) { return _["second"]; }
-
-    fallback(_);
 
     _["second"] = _consume_obs_second();
     if (!z(_["second"])) { return _["second"]; }
