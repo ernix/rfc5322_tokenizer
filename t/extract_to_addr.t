@@ -69,10 +69,10 @@ my %tests = (
         joe@example.org
         jdoe@one.test
     )],
-    'rfc5322_appendix_a_6_1.mbox' => [
-        'mary@example.net',
-        'jdoe@test  . example',
-    ],
+    'rfc5322_appendix_a_6_1.mbox' => [qw(
+        mary@example.net
+        jdoe@test.example
+    )],
     'rfc5322_appendix_a_6_2.mbox' => [qw(
         mary@example.net
     )],

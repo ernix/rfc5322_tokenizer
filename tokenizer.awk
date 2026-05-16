@@ -1521,7 +1521,12 @@ function consume_addr_spec(    _) {
     if (z(_["domain"])) { fatal(_); return 0; }
     _["tmp"] = _["tmp"] _["domain"];
 
-    stack("addr-spec", _["tmp"]);
+    # Strip CFWS from the domain value (obs-domain allows whitespace between
+    # atoms, but it carries no semantic meaning). Follows the same approach as
+    # Python's email.headerregistry: ''.join(domain.split())
+    _["domain_norm"] = _["domain"];
+    gsub(/[ \t\r\n]+/, "", _["domain_norm"]);
+    stack("addr-spec", _["local_part"] _["at"] _["domain_norm"]);
     return _["tmp"];
 }
 
