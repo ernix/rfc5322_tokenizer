@@ -1828,6 +1828,7 @@ function consume_msg_id(    _) {
     return _["tmp"];
 }
 
+# obs-in-reply-to / obs-references = *(phrase / msg-id)
 function consume_multi_msg_id(    _) {
     split("", _); markout(_);
 
@@ -1835,10 +1836,12 @@ function consume_multi_msg_id(    _) {
 
     _["seen"] = 0;
     while (1) {
-        _["msg_id"] = consume_msg_id();
-        if (z(_["msg_id"])) { break; }
-        _["tmp"] = _["tmp"] _["msg_id"];
-
+        _["item"] = consume_msg_id();
+        if (z(_["item"])) {
+            _["item"] = consume_phrase();
+            if (z(_["item"])) { break; }
+        }
+        _["tmp"] = _["tmp"] _["item"];
         _["seen"]++;
     }
 
