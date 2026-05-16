@@ -2876,6 +2876,7 @@ function consume(    _) {
     else if (_["field"] == "resent-cc") { _["success"] = consume_address_list(); }
     else if (_["field"] == "resent-bcc") { _["success"] = consume_bcc(); }
     else if (_["field"] == "resent-message-id") { _["success"] = consume_msg_id(); }
+    else if (_["field"] == "resent-reply-to") { _["success"] = consume_address_list(); }
     else if (_["field"] == "return-path") { _["success"] = consume_path(); }
     else if (_["field"] == "received") {
         _["success"] = consume_rfc5321_received();
