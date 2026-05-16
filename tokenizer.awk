@@ -2869,13 +2869,13 @@ function consume(    _) {
     else if (_["field"] == "message-id") { _["success"] = consume_msg_id(); }
     else if (_["field"] == "in-reply-to") { _["success"] = consume_in_reply_to(); }
     else if (_["field"] == "references") { _["success"] = consume_references(); }
-    else if (_["field"] == "recent-date") { _["success"] = consume_date_time(); }
-    else if (_["field"] == "recent-from") { _["success"] = consume_mailbox_list(); }
-    else if (_["field"] == "recent-sender") { _["success"] = consume_mailbox(); }
-    else if (_["field"] == "recent-to") { _["success"] = consume_address_list(); }
-    else if (_["field"] == "recent-cc") { _["success"] = consume_address_list(); }
-    else if (_["field"] == "recent-bcc") { _["success"] = consume_bcc(); }
-    else if (_["field"] == "recent-message-id") { _["success"] = consume_msg_id(); }
+    else if (_["field"] == "resent-date") { _["success"] = consume_date_time(); }
+    else if (_["field"] == "resent-from") { _["success"] = consume_mailbox_list(); }
+    else if (_["field"] == "resent-sender") { _["success"] = consume_mailbox(); }
+    else if (_["field"] == "resent-to") { _["success"] = consume_address_list(); }
+    else if (_["field"] == "resent-cc") { _["success"] = consume_address_list(); }
+    else if (_["field"] == "resent-bcc") { _["success"] = consume_bcc(); }
+    else if (_["field"] == "resent-message-id") { _["success"] = consume_msg_id(); }
     else if (_["field"] == "return-path") { _["success"] = consume_path(); }
     else if (_["field"] == "received") {
         _["success"] = consume_rfc5321_received();
