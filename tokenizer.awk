@@ -1828,8 +1828,7 @@ function consume_msg_id(    _) {
     return _["tmp"];
 }
 
-# references = "References:" 1*msg-id CRLF
-function consume_references(    _) {
+function consume_multi_msg_id(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -1846,6 +1845,18 @@ function consume_references(    _) {
     if (!_["seen"]) { fatal(_); return 0; }
 
     return _["tmp"];
+}
+
+# references = "References:" 1*msg-id CRLF
+function consume_references(    _) {
+    split("", _); markout(_);
+    return consume_multi_msg_id();
+}
+
+# in-reply-to = "In-Reply-To:" 1*msg-id CRLF
+function consume_in_reply_to(    _) {
+    split("", _); markout(_);
+    return consume_multi_msg_id();
 }
 
 # path = angle-addr / ([CFWS] "<" [CFWS] ">" [CFWS])
@@ -2856,6 +2867,7 @@ function consume(    _) {
     else if (_["field"] == "cc") { _["success"] = consume_address_list(); }
     else if (_["field"] == "bcc") { _["success"] = consume_bcc(); }
     else if (_["field"] == "message-id") { _["success"] = consume_msg_id(); }
+    else if (_["field"] == "in-reply-to") { _["success"] = consume_in_reply_to(); }
     else if (_["field"] == "references") { _["success"] = consume_references(); }
     else if (_["field"] == "recent-date") { _["success"] = consume_date_time(); }
     else if (_["field"] == "recent-from") { _["success"] = consume_mailbox_list(); }
