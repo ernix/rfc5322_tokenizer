@@ -2837,8 +2837,31 @@ function consume_received(    _) {
     return _["tmp"];
 }
 
-# phrase *("," phrase)
-function consume_keywords(    _) {
+# obs-phrase-list = [phrase / CFWS] *("," [phrase / CFWS])
+function consume_obs_phrase_list(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = "";
+
+    _["item"] = consume_phrase();
+    if (z(_["item"])) { _["item"] = optional(consume_cfws()); }
+    _["tmp"] = _["tmp"] _["item"];
+
+    while (1) {
+        _["comma"] = next_str(",");
+        if (z(_["comma"])) { break; }
+        _["tmp"] = _["tmp"] _["comma"];
+
+        _["item"] = consume_phrase();
+        if (z(_["item"])) { _["item"] = optional(consume_cfws()); }
+        _["tmp"] = _["tmp"] _["item"];
+    }
+
+    return _["tmp"];
+}
+
+# keywords = "Keywords:" phrase *("," phrase) CRLF
+function _consume_keywords(    _) {
     split("", _); markout(_);
 
     _["tmp"] = "";
@@ -2854,6 +2877,18 @@ function consume_keywords(    _) {
     }
 
     return _["tmp"];
+}
+
+# keywords = phrase *("," phrase) / obs-phrase-list
+function consume_keywords(    _) {
+    split("", _); markout(_);
+
+    _["tmp"] = _consume_keywords();
+    if (!z(_["tmp"])) { return _["tmp"]; }
+
+    fallback(_);
+
+    return consume_obs_phrase_list();
 }
 
 function consume(    _) {
@@ -2891,7 +2926,7 @@ function consume(    _) {
     else if (_["field"] == "keywords") { _["success"] = consume_keywords(); }
     else { _["success"] = 1; } # unknown header
 
-    if (!_["success"]) {
+    if (z(_["success"])) {
         diag("ERROR:" FILENAME ":" ebuf);
         error = 1;
     }
