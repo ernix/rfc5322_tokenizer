@@ -1702,7 +1702,21 @@ function consume_address_list(    _) {
     return 0;
 }
 
-# [address-list / CFWS]
+# obs-bcc = "Bcc:" (address-list / (*([CFWS] ",") [CFWS]))
+function consume_obs_bcc(    _) {
+    split("", _); markout(_);
+    _["tmp"] = "";
+    while (1) {
+        _["cfws"] = optional(consume_cfws());
+        _["comma"] = next_str(",");
+        if (z(_["comma"])) { break; }
+        _["tmp"] = _["tmp"] _["cfws"] _["comma"];
+    }
+    _["tmp"] = _["tmp"] optional(consume_cfws());
+    return _["tmp"];
+}
+
+# bcc = "Bcc:" (address-list / CFWS)
 function consume_bcc(    _) {
     split("", _); markout(_);
 
@@ -1711,11 +1725,7 @@ function consume_bcc(    _) {
 
     fallback(_);
 
-    _["tmp"] = consume_cfws();
-    if (!z(_["tmp"])) { return _["tmp"]; }
-
-    fatal(_);
-    return 0;
+    return consume_obs_bcc();
 }
 
 # obs-id-left = local-part
