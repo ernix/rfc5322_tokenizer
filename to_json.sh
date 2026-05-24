@@ -7,7 +7,7 @@ dir=$(cd "$(dirname "$0")" && pwd)
 # Please see `Working with arrays` section in
 # Rich's sh (POSIX shell) tricks:
 # http://www.etalabs.net/sh_tricks.html
-eval "set -- $(awk -f "$dir/tokenizer.awk")"
+eval "set -- $(sh "$dir/parser.sh")"
 
 # Each odd index elements indicate token name
 # Each even index elements contains token value

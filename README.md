@@ -5,20 +5,8 @@ Pure POSIX-compliant RFC 5322 tokenizer
 
 ```
 $ awk --posix -f ./tokenizer.awk path/to/some.mbox
-
-$ sh -c 'eval "set -- $1"; printf %s\\t%s\\n "$@"' -- \
-    "$(<path/to/some.mbox formail -c -X To: | awk --posix -f ./tokenizer.awk)" \
-    | awk '$1 == "addr-spec" { print $2; }'
+$ ./parse_address.sh To < path/to/some.mbox
 ```
-
-The `-c` option of `formail(1)` here is important, because tokens may contain any
-ASCII control characters. (even NUL, see `obs-utext` in RFC[^1])
-
-> -c   Concatenate continued fields in the header.  Might be convenient
->      when postprocessing mail with standard (line oriented) text
->      utilities.
-
-You can still loop over tokens safely without formail. See `example.sh` for more detail.
 
 # DESCRIPTION
 
@@ -75,7 +63,7 @@ This awk script is my personal experiment to solve the problem without external 
 
 If you can install CPAN modules, you should try [Email::Address::XS](https://metacpan.org/pod/Email::Address::XS).
 
-If you can use newer versions of Python (Batteries included!), the following code gives exact same result as `example.sh`:
+If you can use newer versions of Python (Batteries included!), the following code gives exact same result as `parse_address.sh To`:
 
 ```python
 import sys
