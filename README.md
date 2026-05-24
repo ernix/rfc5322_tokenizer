@@ -61,6 +61,13 @@ There really is no standard/promised/built-in/portable/easy-to-use/whatever way 
 
 This awk script is my personal experiment to solve the problem without external tools/libraries.
 
+```procmail
+:0
+* ^From:
+* ? sed '/^$/q' | /path/to/parse_address.sh From | grep -qxF "spammer@example.com"
+$HOME/Maildir/.Junk/
+```
+
 If you can install CPAN modules, you should try [Email::Address::XS](https://metacpan.org/pod/Email::Address::XS).
 
 If you can use newer versions of Python (Batteries included!), the following code gives exact same result as `parse_address.sh To`:
