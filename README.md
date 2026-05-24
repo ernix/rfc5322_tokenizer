@@ -63,8 +63,7 @@ This awk script is my personal experiment to solve the problem without external 
 
 ```procmail
 :0
-* ^From:
-* ? sed '/^$/q' | /path/to/parse_address.sh From | grep -qxF "spammer@example.com"
+* ? /path/to/parse_address.sh From | grep -qxF "spammer@example.com"
 $HOME/Maildir/.Junk/
 ```
 
