@@ -1,11 +1,18 @@
 # rfc5322_tokenizer
 Pure POSIX-compliant RFC 5322 tokenizer
 
+# INSTALL and UNINSTALL
+
+```
+$ make install
+$ make uninstall
+```
+
 # SYNOPSIS
 
 ```
-$ awk --posix -f ./tokenizer.awk path/to/some.mbox
-$ ./parse_address.sh To < path/to/some.mbox
+$ parse-address To < path/to/some.mbox
+$ trace-received < path/to/some.mbox
 ```
 
 # DESCRIPTION
@@ -63,13 +70,13 @@ This awk script is my personal experiment to solve the problem without external 
 
 ```procmail
 :0
-* ? /path/to/parse_address.sh From | grep -qxF "spammer@example.com"
+* ? parse-address From | grep -qxF "spammer@example.com"
 $HOME/Maildir/.Junk/
 ```
 
 If you can install CPAN modules, you should try [Email::Address::XS](https://metacpan.org/pod/Email::Address::XS).
 
-If you can use newer versions of Python (Batteries included!), the following code gives exact same result as `parse_address.sh To`:
+If you can use newer versions of Python (Batteries included!), the following code gives exact same result as `parse-address To`:
 
 ```python
 import sys
