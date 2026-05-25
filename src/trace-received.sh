@@ -64,7 +64,9 @@ while test $# -gt 0; do
   esac
 done
 
-printf "%s\n" "$from"
+if test -n "$from"; then
+  printf "%s\n" "$from"
+fi
 
 if test "$found" = yes; then
   exit 1
