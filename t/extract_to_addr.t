@@ -10,7 +10,7 @@ use IPC::Open3;
 use JSON::PP;
 
 my $base_dir = catfile($RealBin, updir());
-my $tokenizer = catfile($base_dir, 'tokenizer.awk');
+my $tokenizer = catfile($base_dir, 'src', 'tokenizer.awk');
 
 sub tokenize {
     my ($mbox) = @_;
