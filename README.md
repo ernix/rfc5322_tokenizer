@@ -95,8 +95,10 @@ There really is no standard/promised/built-in/portable/easy-to-use/whatever way 
 This awk script is my personal experiment to solve the problem without external tools/libraries.
 
 ```procmail
+FROMADDR=| parse-address From
+
 :0
-* ? parse-address From | grep -qxF "spammer@example.com"
+* FROMADDR ?? ^spammer@example\.com$
 $HOME/Maildir/.Junk/
 ```
 
