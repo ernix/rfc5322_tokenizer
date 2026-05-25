@@ -3,7 +3,7 @@
 # Extract email addresses in target header
 
 if test -z "$1"; then
-  printf "Require exact 1 positional argument" >&2
+  printf "%s\n" "Require exact 1 positional argument" >&2
   exit 1
 fi
 
